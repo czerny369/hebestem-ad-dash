@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> 헤베스템 광고 퍼포먼스 분석 대시보드 (V12.0 AI Agent Edition)</title>
+    <title>헤베스템 광고 퍼포먼스 분석 대시보드 (V12.0 AI Agent Edition)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -27,9 +27,13 @@
     <div id="app" class="max-w-7xl mx-auto space-y-6">
         <!-- 헤더 -->
         <header class="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-            <div>
-                <h1 class="text-3xl font-extrabold text-gray-800 tracking-tight"><i class="fas fa-robot text-indigo-600 mr-2"></i>Hebestem Performance AI Agent</h1>
-                <p class="text-gray-500 mt-2 font-medium">일별 ROAS 매칭 및 GPT 기반 주간 성과 자동 해석 리포트</p>
+            <div class="flex items-center">
+                <div class="bg-[#2b64f5] text-white font-extrabold rounded-xl w-11 h-11 flex items-center justify-center text-2xl tracking-tighter shadow-sm">
+                    H
+                </div>
+                <h1 class="text-2xl font-black text-[#0f172a] tracking-widest ml-3 mr-4">HEBESTEM</h1>
+                <div class="h-6 w-px bg-gray-300 mr-4"></div>
+                <p class="text-[17px] text-[#64748b] font-medium tracking-tight">Performance studio</p>
             </div>
             <div class="px-5 py-3 bg-indigo-600 text-white rounded-lg font-bold text-sm shadow-md flex items-center">
                 <i class="fas fa-sparkles mr-2"></i>V12.0 AI Edition
@@ -97,6 +101,31 @@
                     <h2 class="text-sm font-bold text-gray-800 mb-2"><i class="fas fa-money-bill-wave text-green-500 mr-2"></i>지난 주 자사몰 총 매출</h2>
                     <p class="text-[10px] text-gray-400 mb-2">비교용으로 지난주 총매출 1건만 입력하세요.</p>
                     <input type="number" v-model.number="p_manualTotalRev" class="w-full p-2.5 text-right text-base font-bold text-green-700 bg-green-50 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-400 focus:outline-none" placeholder="0">
+                </div>
+
+                <!-- 5. 지난 보고서 (히스토리) -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 mt-6">
+                    <h2 class="text-lg font-bold text-gray-800 mb-5 flex items-center">
+                        <i class="fas fa-history text-gray-600 mr-2"></i>지난 보고서
+                    </h2>
+                    <div class="space-y-2">
+                        <!-- 더미 항목 1 -->
+                        <div class="group flex justify-between items-center cursor-pointer hover:bg-slate-50 p-3 -mx-3 rounded-lg transition-colors border-b border-gray-50 last:border-0">
+                            <div>
+                                <p class="text-[17px] font-medium text-[#175bb8] tracking-wide">09-07 — 09-13</p>
+                                <p class="text-[13px] text-gray-500 mt-0.5">2026년 · 계산 보고서</p>
+                            </div>
+                            <i class="fas fa-arrow-right text-gray-500 transform -rotate-45 group-hover:text-[#175bb8] transition-colors"></i>
+                        </div>
+                        <!-- 더미 항목 2 -->
+                        <div class="group flex justify-between items-center cursor-pointer hover:bg-slate-50 p-3 -mx-3 rounded-lg transition-colors border-b border-gray-50 last:border-0">
+                            <div>
+                                <p class="text-[17px] font-medium text-[#175bb8] tracking-wide">08-31 — 09-06</p>
+                                <p class="text-[13px] text-gray-500 mt-0.5">2026년 · 계산 보고서</p>
+                            </div>
+                            <i class="fas fa-arrow-right text-gray-500 transform -rotate-45 group-hover:text-[#175bb8] transition-colors"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
 
