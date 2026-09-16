@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>헤베스템 광고 퍼포먼스 분석 대시보드 (V11.0)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Pretendard', sans-serif; background-color: #f1f5f9; }
+        .drop-zone { border: 2px dashed #cbd5e1; transition: all 0.2s; background: #fafafa; }
+        .drop-zone:hover, .drop-zone.dragover { border-color: #4f46e5; background-color: #e0e7ff; }
+        .tab-btn { transition: all 0.2s ease-in-out; border-bottom: 3px solid transparent; }
+        .tab-active { border-bottom: 3px solid #4f46e5; color: #4f46e5; font-weight: bold; background-color: white; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div id="app" class="max-w-7xl mx-auto space-y-6">
+        <!-- 헤더 -->
+        <header class="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+            <div>
+                <h1 class="text-3xl font-extrabold text-gray-800 tracking-tight"><i class="fas fa-rocket text-indigo-600 mr-2"></i>Hebestem Performance Dashboard</h1>
+                <p class="text-gray-500 mt-2 font-medium">일별 광고비와 자사몰 매출 매칭을 통한 ROAS 트렌드 분석기</p>
+            </div>
+            <!-- 버전 라벨 -->
+            <div class="px-5 py-3 bg-indigo-600 text-white rounded-lg font-bold text-sm shadow-md flex items-center">
+                <i class="fas fa-check-circle mr-2"></i>V11.0 대시보드
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- 왼쪽 패널 -->
+            <div class="lg:col-span-3 space-y-4">
+                
+                <!-- 1. 이번 주 META 데이터 -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border" :class="isThisWeekLoaded ? 'border-indigo-400 bg-indigo-50/20' : 'border-gray-200'">
+                    <h2 class="text-sm font-bold text-gray-800 mb-2"><i class="fas fa-calendar-check text-indigo-500 mr-2"></i>이번 주 광고비 연동 (META)</h2>
+                    <div class="drop-zone p-4 rounded-xl text-center cursor-pointer mb-2" 
+                         @click="$refs.fileCurrent.click()">
+                        <i class="fas fa-file-upload text-2xl mb-1 text-indigo-500"></i>
+                        <p class="text-xs font-semibold text-gray-600">CSV/Excel 드래그 앤 드롭</p>
+                        <input type="file" ref="fileCurrent" class="hidden" accept=".csv, .xlsx" @change="handleFile($event, 'current')">
+                    </div>
+                    <p v-if="isThisWeekLoaded" class="text-xs text-center text-indigo-600 font-bold"><i class="fas fa-check-circle mr-1"></i>총 지출: {{ c_metrics.spend.toLocaleString() }}원</p>
+                </div>
+
+                <!-- 2. 이번 주 요일별 매출 폼 (완벽 복구) -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 border-l-4 border-l-blue-500 flex flex-col">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-sm font-bold text-gray-800"><i class="fas fa-edit text-blue-500 mr-2"></i>일별 자사몰 매출</h2>
+                        <button @click="$refs.fileRevenue.click()" class="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold hover:bg-blue-200 transition shadow-sm border border-blue-200">
+                            <i class="fas fa-file-excel mr-1"></i>엑셀 채우기
+                        </button>
+                        <input type="file" ref="fileRevenue" class="hidden" accept=".xlsx, .csv" @change="handleRevenueFile">
+                    </div>
+                    <p class="text-[10px] text-gray-400 mb-2">META 데이터를 올리면 날짜가 자동 매칭됩니다.</p>
+                    
+                    <div v-if="!isThisWeekLoaded" class="text-center py-6 bg-gray-50 rounded-lg">
+                        <p class="text-xs text-gray-400">이번 주 광고 데이터를 올려주세요.</p>
+                    </div>
+                    
+                    <div v-else class="space-y-2 flex-grow">
+                        <div v-for="key in sortedKeys" :key="key" class="flex justify-between items-center bg-gray-50 p-2 rounded border border-gray-100">
+                            <!-- 날짜 (요일) -->
+                            <div class="flex flex-col w-20">
+                                <span class="text-[10px] text-gray-400">{{ key }}</span>
+                                <span class="text-xs font-bold text-gray-700">{{ getDayName(key) }}</span>
+                            </div>
+                            <input type="number" v-model.number="c_dailyMap[key].manualRev" class="w-full ml-2 p-1.5 text-right text-sm font-bold text-blue-600 border border-gray-200 rounded focus:ring-1 focus:ring-blue-400 focus:outline-none" placeholder="0">
+                        </div>
+                    </div>
+                    
+                    <div v-if="isThisWeekLoaded" class="mt-4 pt-3 border-t border-gray-200 flex justify-between items-center">
+                        <span class="text-xs font-bold text-gray-600">이번 주 총매출:</span>
+                        <span class="text-sm font-extrabold text-blue-600">{{ c_manualTotalRev.toLocaleString() }}원</span>
+                    </div>
+                </div>
+
+                <!-- 3. 지난 주 META 데이터 -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border" :class="isLastWeekLoaded ? 'border-teal-400 bg-teal-50/20' : 'border-gray-200'">
+                    <h2 class="text-sm font-bold text-gray-800 mb-2"><i class="fas fa-history text-teal-500 mr-2"></i>지난 주 광고비 연동 (META)</h2>
+                    <div class="drop-zone p-4 rounded-xl text-center cursor-pointer mb-2" 
+                         @click="$refs.filePrev.click()">
+                        <i class="fas fa-file-upload text-2xl mb-1 text-teal-500"></i>
+                        <p class="text-xs font-semibold text-gray-600">CSV/Excel 드래그 앤 드롭</p>
+                        <input type="file" ref="filePrev" class="hidden" accept=".csv, .xlsx" @change="handleFile($event, 'prev')">
+                    </div>
+                    <p v-if="isLastWeekLoaded" class="text-xs text-center text-teal-600 font-bold"><i class="fas fa-check-circle mr-1"></i>총 지출: {{ p_metrics.spend.toLocaleString() }}원</p>
+                </div>
+
+                <!-- 4. 지난 주 자사몰 총매출 -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 border-l-4 border-l-green-500">
+                    <h2 class="text-sm font-bold text-gray-800 mb-2"><i class="fas fa-money-bill-wave text-green-500 mr-2"></i>지난 주 자사몰 총 매출</h2>
+                    <p class="text-[10px] text-gray-400 mb-2">비교용으로 지난주 총매출 1건만 입력하세요.</p>
+                    <input type="number" v-model.number="p_manualTotalRev" class="w-full p-2.5 text-right text-base font-bold text-green-700 bg-green-50 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-400 focus:outline-none" placeholder="0">
+                </div>
+
+            </div>
+
+            <!-- 오른쪽 패널 -->
+            <div class="lg:col-span-9 space-y-4">
+                <!-- KPI 요약 카드 -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
+                        <p class="text-xs font-bold text-gray-500 mb-1">총 광고비 (이번 주)</p>
+                        <p class="text-xl font-extrabold text-gray-800">{{ c_metrics.spend.toLocaleString() }}<span class="text-xs font-normal text-gray-500 ml-1">원</span></p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
+                        <p class="text-xs font-bold text-gray-500 mb-1">유입 클릭률 (CTR)</p>
+                        <p class="text-xl font-extrabold text-teal-600">{{ c_metrics.ctr.toFixed(2) }}<span class="text-xs font-normal text-teal-400 ml-1">%</span></p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
+                        <p class="text-xs font-bold text-gray-500 mb-1">장바구니 전환율</p>
+                        <p class="text-xl font-extrabold text-yellow-600">{{ c_metrics.atcRate.toFixed(2) }}<span class="text-xs font-normal text-yellow-400 ml-1">%</span></p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-b-4 border-blue-500 flex flex-col justify-between">
+                        <p class="text-xs font-bold text-blue-600 mb-1">진성 ROAS (실매출 기준)</p>
+                        <p class="text-2xl font-black text-blue-600">{{ totalRoas.toFixed(0) }}<span class="text-sm font-bold text-blue-400 ml-1">%</span></p>
+                    </div>
+                </div>
+
+                <!-- 탭 네비게이션 -->
+                <div class="bg-gray-100 rounded-t-2xl border-b border-gray-200 flex px-2 pt-2 mt-4">
+                    <button @click="activeTab = 'funnel'" class="tab-btn px-6 py-3 text-sm font-bold text-gray-500 rounded-t-lg" :class="{ 'tab-active': activeTab === 'funnel' }">
+                        <i class="fas fa-chart-area mr-2"></i>수직 차트 & 퍼널 진단
+                    </button>
+                    <button @click="activeTab = 'wow'" class="tab-btn px-6 py-3 text-sm font-bold text-gray-500 rounded-t-lg" :class="{ 'tab-active': activeTab === 'wow' }">
+                        <i class="fas fa-balance-scale mr-2"></i>전주 대비 비교 (WoW)
+                    </button>
+                    <button @click="activeTab = 'ranking'" class="tab-btn px-6 py-3 text-sm font-bold text-gray-500 rounded-t-lg" :class="{ 'tab-active': activeTab === 'ranking' }">
+                        <i class="fas fa-medal mr-2"></i>광고 소재 랭킹
+                    </button>
+                </div>
+
+                <!-- [탭 1] 차트 및 AI 리포트 -->
+                <div v-show="activeTab === 'funnel'" class="space-y-6">
+                    
+                    <!-- 차트 A: 전체 요약 (세로형 막대그래프) -->
+                    <div class="bg-white p-6 rounded-b-2xl rounded-tr-2xl shadow-sm border border-gray-200">
+                        <h3 class="text-sm font-bold text-gray-800 mb-1"><i class="fas fa-chart-bar mr-2 text-indigo-500"></i>이번 주 전체 누적 요약</h3>
+                        <p class="text-xs text-gray-400 mb-4">이번 주 전체 누적 광고비와 누적 실매출 볼륨을 수직 그래프로 직관적으로 확인합니다.</p>
+                        <div class="h-[200px] w-full relative">
+                            <canvas id="totalChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- 차트 B: 일별 트렌드 (이제 "진짜" 광고비가 들어감) -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                        <h3 class="text-sm font-bold text-gray-800 mb-1"><i class="fas fa-chart-line mr-2 text-teal-500"></i>일별 트렌드 (광고비 vs 실매출 vs ROAS)</h3>
+                        <p class="text-xs text-gray-400 mb-4">META의 실제 일별 광고비와 입력한 자사몰 실매출이 위로 솟는 그래프로 역동적으로 그려집니다.</p>
+                        <div class="h-[280px] w-full relative">
+                            <canvas id="dailyChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- AI 심층 진단 -->
+                    <div class="bg-slate-900 rounded-2xl shadow-xl border border-slate-700 text-slate-200 p-6 space-y-4">
+                        <h2 class="text-lg font-bold text-white mb-2"><i class="fas fa-brain text-indigo-400 mr-2"></i>심층 퍼널 AI 진단 리포트 (이번 주)</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                                <p class="text-teal-400 font-bold mb-2 text-sm"><i class="fas fa-mouse-pointer mr-1"></i>1단계: 소재 매력도 (CTR)</p>
+                                <p class="text-xs text-slate-300 leading-relaxed" v-if="c_metrics.ctr >= 1.5">클릭률(CTR)이 {{ c_metrics.ctr.toFixed(2) }}%로 높습니다. 현재 썸네일과 카피가 타겟의 시선을 완벽히 사로잡고 있습니다.</p>
+                                <p class="text-xs text-slate-300 leading-relaxed" v-else>클릭률이 다소 낮습니다. 썸네일 교체가 시급합니다.</p>
+                            </div>
+                            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                                <p class="text-yellow-400 font-bold mb-2 text-sm"><i class="fas fa-shopping-cart mr-1"></i>2단계: 랜딩 설득력 (장바구니)</p>
+                                <p class="text-xs text-slate-300 leading-relaxed" v-if="c_metrics.atcRate >= 5.0">장바구니 전환율이 {{ c_metrics.atcRate.toFixed(2) }}%로 탁월합니다! 상세페이지 최적화가 잘 되어 있습니다.</p>
+                                <p class="text-xs text-slate-300 leading-relaxed" v-else>상세페이지 초기 이탈이 발생합니다. 최상단 혜택 배너를 강화하세요.</p>
+                            </div>
+                            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                                <p class="text-blue-400 font-bold mb-2 text-sm"><i class="fas fa-coins mr-1"></i>3단계: 최종 진성 수익률 (ROAS)</p>
+                                <p class="text-xs text-slate-300 leading-relaxed" v-if="totalRoas >= 250">실매출 기준 최종 ROAS {{ totalRoas.toFixed(0) }}%. 손익분기를 넘는 훌륭한 퍼포먼스입니다.</p>
+                                <p class="text-xs text-slate-300 leading-relaxed" v-else>투입 광고비 대비 입금액이 부족합니다. 객단가 상승 패키지 기획 및 리타겟팅이 시급합니다.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- [탭 2] 전주 비교 -->
+                <div v-show="activeTab === 'wow'" class="bg-white p-6 rounded-b-2xl rounded-tr-2xl shadow-sm border border-gray-200">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-gray-50 p-5 rounded-2xl border text-center relative overflow-hidden">
+                            <div class="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
+                            <p class="text-xs font-bold text-gray-500 mb-3">진성 ROAS 비교</p>
+                            <div class="flex justify-between items-end mb-3">
+                                <div class="text-left"><p class="text-[10px] text-gray-400">지난주</p><p class="text-lg font-semibold text-gray-600">{{ wowPrevRoas.toFixed(0) }}%</p></div>
+                                <div class="text-right"><p class="text-[10px] font-bold text-blue-500">이번주</p><p class="text-2xl font-extrabold text-blue-700">{{ totalRoas.toFixed(0) }}%</p></div>
+                            </div>
+                            <span class="text-xs font-bold px-2.5 py-1 rounded-full" :class="totalRoas >= wowPrevRoas ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'">
+                                {{ Math.abs(totalRoas - wowPrevRoas).toFixed(1) }}%p {{ totalRoas >= wowPrevRoas ? '상승' : '하락' }}
+                            </span>
+                        </div>
+                        <div class="bg-gray-50 p-5 rounded-2xl border text-center relative overflow-hidden">
+                            <div class="absolute top-0 left-0 w-full h-1 bg-teal-500"></div>
+                            <p class="text-xs font-bold text-gray-500 mb-3">유입 CTR 비교</p>
+                            <div class="flex justify-between items-end mb-3">
+                                <div class="text-left"><p class="text-[10px] text-gray-400">지난주</p><p class="text-lg font-semibold text-gray-600">{{ p_metrics.ctr.toFixed(2) }}%</p></div>
+                                <div class="text-right"><p class="text-[10px] font-bold text-teal-500">이번주</p><p class="text-2xl font-extrabold text-teal-600">{{ c_metrics.ctr.toFixed(2) }}%</p></div>
+                            </div>
+                            <span class="text-xs font-bold px-2.5 py-1 rounded-full" :class="c_metrics.ctr >= p_metrics.ctr ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'">
+                                {{ Math.abs(c_metrics.ctr - p_metrics.ctr).toFixed(2) }}%p
+                            </span>
+                        </div>
+                        <div class="bg-gray-50 p-5 rounded-2xl border text-center relative overflow-hidden">
+                            <div class="absolute top-0 left-0 w-full h-1 bg-yellow-400"></div>
+                            <p class="text-xs font-bold text-gray-500 mb-3">장바구니 전환율 비교</p>
+                            <div class="flex justify-between items-end mb-3">
+                                <div class="text-left"><p class="text-[10px] text-gray-400">지난주</p><p class="text-lg font-semibold text-gray-600">{{ p_metrics.atcRate.toFixed(2) }}%</p></div>
+                                <div class="text-right"><p class="text-[10px] font-bold text-yellow-600">이번주</p><p class="text-2xl font-extrabold text-yellow-600">{{ c_metrics.atcRate.toFixed(2) }}%</p></div>
+                            </div>
+                            <span class="text-xs font-bold px-2.5 py-1 rounded-full" :class="c_metrics.atcRate >= p_metrics.atcRate ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'">
+                                {{ Math.abs(c_metrics.atcRate - p_metrics.atcRate).toFixed(2) }}%p
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- [탭 3] 소재 랭킹 -->
+                <div v-show="activeTab === 'ranking'" class="bg-white rounded-b-2xl rounded-tr-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="p-4 bg-gray-50 border-b border-gray-200">
+                        <p class="text-sm font-bold text-gray-800"><i class="fas fa-medal text-yellow-500 mr-2"></i>이번 주 진성 광고 소재 랭킹</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse whitespace-nowrap">
+                            <thead>
+                                <tr class="bg-white text-gray-500 text-[11px] uppercase tracking-wider border-b border-gray-200">
+                                    <th class="p-4 font-bold">순위 및 광고 이름</th>
+                                    <th class="p-4 font-bold text-right">지출액</th>
+                                    <th class="p-4 font-bold text-right">CTR</th>
+                                    <th class="p-4 font-bold text-right">장바구니율</th>
+                                    <th class="p-4 font-bold text-right">기여 추정 ROAS</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-if="rankedAdData.length === 0">
+                                    <td colspan="5" class="p-10 text-center text-gray-400">데이터를 연동하세요.</td>
+                                </tr>
+                                <tr v-for="(ad, index) in rankedAdData" :key="index" class="border-b border-gray-100 hover:bg-blue-50 transition-colors">
+                                    <td class="p-4 text-sm text-gray-800 font-bold truncate max-w-[280px]">
+                                        <span v-if="index === 0" class="text-yellow-500 mr-2" title="1위"><i class="fas fa-crown text-lg"></i></span>
+                                        <span v-else-if="index === 1" class="text-gray-400 mr-2" title="2위"><i class="fas fa-crown text-base"></i></span>
+                                        <span v-else-if="index === 2" class="text-amber-600 mr-2" title="3위"><i class="fas fa-crown text-sm"></i></span>
+                                        <span v-else class="text-gray-300 mr-3 text-xs w-4 inline-block text-center">{{ index + 1 }}</span>
+                                        {{ ad.name }}
+                                    </td>
+                                    <td class="p-4 text-sm text-gray-600 text-right">{{ ad.spend.toLocaleString() }}원</td>
+                                    <td class="p-4 text-sm text-right font-medium text-teal-600">{{ ad.ctr.toFixed(2) }}%</td>
+                                    <td class="p-4 text-sm text-right font-medium text-yellow-600">{{ ad.atcRate.toFixed(2) }}%</td>
+                                    <td class="p-4 text-sm text-right font-extrabold text-blue-600">{{ ad.calcRoas.toFixed(0) }}%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, reactive, toRefs, computed, onMounted, watch } = Vue;
+
+        createApp({
+            setup() {
+                const state = reactive({
+                    activeTab: 'funnel',
+                    isThisWeekLoaded: false,
+                    isLastWeekLoaded: false,
+                    
+                    c_manualTotalRev: 0, 
+                    p_manualTotalRev: 0, 
+                    
+                    // 빈 맵 객체 (데이터를 넣을 때 동적으로 요일 순서대로 생성됨)
+                    c_dailyMap: {}, 
+                    
+                    c_metrics: { spend: 0, impressions: 0, clicks: 0, landing: 0, atc: 0, purchase: 0, ctr: 0, cvr: 0, atcRate: 0 },
+                    p_metrics: { spend: 0, impressions: 0, clicks: 0, landing: 0, atc: 0, purchase: 0, ctr: 0, cvr: 0, atcRate: 0 },
+                    
+                    c_adData: []
+                });
+
+                let dailyChartInstance = null;
+                let totalChartInstance = null;
+
+                const sortedKeys = computed(() => Object.keys(state.c_dailyMap).sort());
+
+                // 날짜 포맷팅을 위한 헬퍼 (2026-09-07 -> 월요일)
+                const getDayName = (dateStr) => {
+                    const date = new Date(dateStr);
+                    if (isNaN(date)) return '';
+                    return ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'][date.getDay()];
+                };
+
+                const c_manualTotalRev = computed(() => {
+                    return Object.values(state.c_dailyMap).reduce((acc, curr) => acc + (Number(curr.manualRev) || 0), 0);
+                });
+
+                const totalRoas = computed(() => state.c_metrics.spend ? (c_manualTotalRev.value / state.c_metrics.spend) * 100 : 0);
+                const wowPrevRoas = computed(() => state.p_metrics.spend ? (state.p_manualTotalRev / state.p_metrics.spend) * 100 : 0);
+
+                const rankedAdData = computed(() => {
+                    const totalPurchases = state.c_metrics.purchase || 0;
+                    const totalSpend = state.c_metrics.spend || 0;
+                    const metaRev = c_manualTotalRev.value || 0;
+                    
+                    let arr = state.c_adData.map(ad => {
+                        let estimatedRev = 0;
+                        if (totalPurchases > 0) estimatedRev = metaRev * (ad.purchase / totalPurchases);
+                        else if (totalSpend > 0) estimatedRev = metaRev * (ad.spend / totalSpend); 
+                        ad.calcRoas = ad.spend > 0 ? (estimatedRev / ad.spend) * 100 : 0;
+                        return ad;
+                    });
+                    return arr.sort((a, b) => b.calcRoas - a.calcRoas || b.purchase - a.purchase || b.ctr - a.ctr);
+                });
+
+                // 매출 엑셀 맵핑 (위에서 아래로 순서대로 매핑)
+                const handleRevenueFile = (e) => {
+                    const file = e.target.files[0];
+                    if(!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                        try {
+                            const data = new Uint8Array(evt.target.result);
+                            const workbook = XLSX.read(data, {type: 'array'});
+                            const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
+
+                            let keys = sortedKeys.value;
+                            let listIdx = 0;
+
+                            for(let i=1; i<json.length; i++) {
+                                if(!json[i] || listIdx >= keys.length) continue;
+                                let firstCol = (json[i][0] || '').toString();
+                                if(firstCol.includes('합계') || firstCol.includes('총계')) continue;
+                                
+                                let val = parseFloat((json[i][2] || json[i][1] || 0).toString().replace(/,/g, '')) || 0;
+                                if(val > 0) {
+                                    state.c_dailyMap[keys[listIdx]].manualRev = val;
+                                }
+                                listIdx++;
+                            }
+                            alert("요일별 실매출이 완벽하게 연동되었습니다!");
+                        } catch (err) {
+                            alert("오류 발생. 숫자를 직접 기입해주세요.");
+                        }
+                    };
+                    reader.readAsArrayBuffer(file);
+                };
+
+                // ★ 완벽하게 수정된 일별 데이터 파서 (가상x, 실제 엑셀의 날짜별 지출액 합산) ★
+                const parseData = (data, isCurrent) => {
+                    let total = { spend: 0, impressions: 0, clicks: 0, landing: 0, atc: 0, purchase: 0 };
+                    let adMap = {};
+                    let dailyMap = {}; // 날짜별 통계 담기
+                    let hRow = -1;
+                    let idx = { start:-1, name:-1, spend:-1, imp:-1, click:-1, landing:-1, atc:-1, purchase:-1 };
+
+                    // 1. 헤더 스캔
+                    for (let i = 0; i < Math.min(data.length, 25); i++) {
+                        if (!data[i]) continue;
+                        let rowStr = data[i].join('').replace(/\s/g, ''); 
+                        if (rowStr.includes('지출') || rowStr.includes('Spend')) {
+                            hRow = i;
+                            const h = data[i];
+                            idx.start = h.findIndex(c => typeof c === 'string' && (c.includes('보고시작') || c === '보고 시작'));
+                            idx.name = h.findIndex(c => typeof c === 'string' && (c.includes('광고 이름') || c.includes('광고이름')));
+                            idx.spend = h.findIndex(c => typeof c === 'string' && (c.includes('지출') || c.includes('금액')));
+                            idx.imp = h.findIndex(c => typeof c === 'string' && c.includes('노출'));
+                            idx.click = h.findIndex(c => typeof c === 'string' && (c.includes('링크 클릭') || c.includes('클릭')));
+                            idx.landing = h.findIndex(c => typeof c === 'string' && c.includes('랜딩'));
+                            idx.atc = h.findIndex(c => typeof c === 'string' && c.includes('장바구니'));
+                            idx.purchase = h.findIndex(c => typeof c === 'string' && (c.includes('결과') || c.includes('구매')));
+                            break;
+                        }
+                    }
+
+                    if (hRow === -1 || idx.spend === -1) return;
+
+                    const getNum = val => (typeof val === 'number') ? val : (parseFloat((val || '').toString().replace(/,/g, '')) || 0);
+
+                    // 2. 데이터 연산 
+                    for (let i = hRow + 1; i < data.length; i++) {
+                        const r = data[i];
+                        if (!r || !r.length) continue;
+                        const spend = getNum(r[idx.spend]);
+                        if (spend <= 0) continue; 
+
+                        const imp = idx.imp !== -1 ? getNum(r[idx.imp]) : 0;
+                        const click = idx.click !== -1 ? getNum(r[idx.click]) : 0;
+                        const landing = idx.landing !== -1 ? getNum(r[idx.landing]) : click;
+                        const atc = idx.atc !== -1 ? getNum(r[idx.atc]) : 0;
+                        const purchase = idx.purchase !== -1 ? getNum(r[idx.purchase]) : 0;
+                        const nameVal = (idx.name !== -1 && r[idx.name]) ? r[idx.name].toString().trim() : '소재';
+                        
+                        // 날짜 추출 (엑셀에 적힌 날짜 '2026-09-06' 등)
+                        const dateVal = (idx.start !== -1 && r[idx.start]) ? r[idx.start].toString().trim() : 'Unknown';
+
+                        total.spend += spend; total.impressions += imp; total.clicks += click; 
+                        total.landing += landing; total.atc += atc; total.purchase += purchase;
+
+                        if (isCurrent) {
+                            // 소재별 합산
+                            if (!adMap[nameVal]) adMap[nameVal] = { name: nameVal, spend:0, imp:0, click:0, landing:0, atc:0, purchase:0 };
+                            adMap[nameVal].spend += spend; adMap[nameVal].imp += imp; adMap[nameVal].click += click; 
+                            adMap[nameVal].landing += landing; adMap[nameVal].atc += atc; adMap[nameVal].purchase += purchase;
+
+                            // 날짜(일별) 합산 -> 엑셀에 적힌 '진짜' 지출액을 날짜별로 더함
+                            if (dateVal !== 'Unknown') {
+                                if (!dailyMap[dateVal]) dailyMap[dateVal] = { spend:0, manualRev:0 };
+                                dailyMap[dateVal].spend += spend;
+                            }
+                        }
+                    }
+
+                    const finalizeMetrics = (t) => {
+                        t.ctr = t.impressions > 0 ? (t.clicks / t.impressions) * 100 : 0;
+                        t.atcRate = t.landing > 0 ? (t.atc / t.landing) * 100 : 0;
+                        return t;
+                    };
+
+                    if (isCurrent) {
+                        state.c_metrics = finalizeMetrics(total);
+                        state.c_dailyMap = dailyMap; // 추출한 일별 데이터 덮어쓰기
+                        state.c_adData = Object.values(adMap).map(ad => {
+                            ad.ctr = ad.imp > 0 ? (ad.click / ad.imp) * 100 : 0;
+                            ad.atcRate = ad.landing > 0 ? (ad.atc / ad.landing) * 100 : 0;
+                            return ad;
+                        });
+                        state.isThisWeekLoaded = true;
+                    } else {
+                        state.p_metrics = finalizeMetrics(total);
+                        state.isLastWeekLoaded = true;
+                    }
+                };
+
+                const handleFile = (e, target) => {
+                    const file = e.target.files[0];
+                    if(!file) return;
+                    const isCurrent = target === 'current';
+                    
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                        try {
+                            const data = new Uint8Array(evt.target.result);
+                            const workbook = XLSX.read(data, { type: 'array' });
+                            parseData(XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 }), isCurrent);
+                        } catch (err) {}
+                    };
+                    reader.readAsArrayBuffer(file);
+                };
+
+                // ★ 차트 1: 수직형(세로형) 막대 그래프 ★
+                const renderTotalChart = () => {
+                    if(totalChartInstance) totalChartInstance.destroy();
+                    const ctx = document.getElementById('totalChart').getContext('2d');
+                    totalChartInstance = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: ['이번 주 퍼포먼스 볼륨'],
+                            datasets: [
+                                { label: '총 광고비(원)', data: [state.c_metrics.spend], backgroundColor: 'rgba(148, 163, 184, 0.6)', borderRadius: 6, barPercentage: 0.3 },
+                                { label: '누적 실매출(원)', data: [c_manualTotalRev.value], backgroundColor: '#3b82f6', borderRadius: 6, barPercentage: 0.3 }
+                            ]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { position: 'top' } },
+                            scales: { y: { beginAtZero: true } }
+                        }
+                    });
+                };
+
+                // ★ 차트 2: 일별 '진짜' 광고비 위로 솟는 콤보 그래프 ★
+                const renderDailyChart = () => {
+                    if(dailyChartInstance) dailyChartInstance.destroy();
+                    const labels = sortedKeys.value.map(k => getDayName(k) || k); // 월요일, 화요일 또는 날짜
+                    
+                    const spendData = sortedKeys.value.map(l => state.c_dailyMap[l].spend);
+                    const revData = sortedKeys.value.map(l => Number(state.c_dailyMap[l].manualRev) || 0);
+                    const roasData = sortedKeys.value.map(l => {
+                        let sp = state.c_dailyMap[l].spend;
+                        let rev = Number(state.c_dailyMap[l].manualRev) || 0;
+                        return sp > 0 ? ((rev / sp) * 100).toFixed(0) : 0;
+                    });
+
+                    const ctx = document.getElementById('dailyChart').getContext('2d');
+                    dailyChartInstance = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                { label: '광고비(원)', data: spendData, type: 'bar', backgroundColor: 'rgba(148, 163, 184, 0.3)', yAxisID: 'y' },
+                                { label: '자사몰 실매출(원)', data: revData, borderColor: '#3b82f6', backgroundColor: '#3b82f6', yAxisID: 'y', tension: 0.3, borderWidth: 3 },
+                                { label: '진성 ROAS(%)', data: roasData, borderColor: '#10b981', backgroundColor: '#10b981', yAxisID: 'y1', tension: 0.3, borderDash: [5, 5] }
+                            ]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            interaction: { mode: 'index', intersect: false },
+                            scales: {
+                                y: { type: 'linear', display: true, position: 'left', grid: { color: '#f1f5f9' }, min: 0 },
+                                y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, min: 0 }
+                            }
+                        }
+                    });
+                };
+
+                watch(() => state.c_dailyMap, () => {
+                    if (state.isThisWeekLoaded) {
+                        renderTotalChart();
+                        renderDailyChart();
+                    }
+                }, { deep: true });
+
+                onMounted(() => {
+                    const c1 = document.getElementById('totalChart').getContext('2d');
+                    totalChartInstance = new Chart(c1, { type: 'bar', data: { labels: [], datasets: [] } });
+
+                    const c2 = document.getElementById('dailyChart').getContext('2d');
+                    dailyChartInstance = new Chart(c2, { type: 'line', data: { labels: [], datasets: [] } });
+                });
+
+                return { 
+                    ...toRefs(state), sortedKeys, c_manualTotalRev, getDayName,
+                    totalRoas, wowPrevRoas, rankedAdData,
+                    handleFile, handleRevenueFile 
+                };
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>
