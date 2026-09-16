@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>광고 퍼포먼스 분석 대시보드 (V17.0 Master Layout)</title>
+    <title>광고 퍼포먼스 분석 대시보드 (V18.0 Final Evolution)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -29,7 +29,7 @@
 <body class="p-4 md:p-8">
     <div id="app" class="max-w-[1400px] mx-auto space-y-6">
         
-        <!-- 헤더 (HEBESTEM 로고 적용) -->
+        <!-- 헤더 -->
         <header class="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <div class="flex items-center space-x-4">
                 <div class="bg-[#3b82f6] text-white w-12 h-12 rounded-xl flex items-center justify-center font-black text-2xl tracking-tighter shadow-md">
@@ -42,7 +42,7 @@
                 </div>
             </div>
             <div class="px-5 py-2.5 bg-blue-50 text-blue-700 border border-blue-100 rounded-lg font-bold text-sm flex items-center shadow-sm">
-                <i class="fas fa-check-circle mr-2"></i>V17.0 Master Layout
+                <i class="fas fa-check-circle mr-2"></i>V18.0 Final Evolution
             </div>
         </header>
 
@@ -163,7 +163,7 @@
                     </div>
                 </div>
 
-                <!-- ★ 3개 탭 네비게이션 (순서 완벽 반영) ★ -->
+                <!-- ★ 3개 탭 네비게이션 ★ -->
                 <div class="bg-white rounded-t-2xl border-b border-gray-200 flex flex-wrap px-2 pt-2 mt-4 shadow-sm">
                     <button @click="activeTab = 'ai'" class="tab-btn px-6 py-3 text-sm font-bold text-gray-500 rounded-t-lg flex items-center" :class="{ 'tab-active': activeTab === 'ai' }">
                         <i class="fas fa-wand-magic-sparkles text-purple-500 mr-2"></i>AI 주간 리포트 & Chat
@@ -176,10 +176,10 @@
                     </button>
                 </div>
 
-                <!-- ★ [탭 1] AI 주간 리포트 & Chat (WoW 통합) ★ -->
+                <!-- [탭 1] AI 주간 리포트 & Chat -->
                 <div v-show="activeTab === 'ai'" class="space-y-4">
                     
-                    <!-- 1. 전주 대비 비교 (맨 위로 이동) -->
+                    <!-- 1. 전주 대비 비교 (WoW) 맨 위 배치 -->
                     <div class="bg-white p-6 rounded-b-2xl rounded-tr-2xl shadow-sm border border-gray-200 space-y-4">
                         <h3 class="text-sm font-bold text-gray-800 mb-4"><i class="fas fa-balance-scale text-teal-500 mr-2"></i>전주 대비 핵심 퍼포먼스 비교 (WoW)</h3>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -291,16 +291,35 @@
                     </div>
                 </div>
 
-                <!-- [탭 2] 일별 트렌드 차트 -->
-                <div v-show="activeTab === 'chart'" class="bg-white p-6 rounded-b-2xl rounded-tr-2xl shadow-sm border border-gray-200 space-y-4">
-                    <h3 class="text-sm font-bold text-gray-800 mb-2"><i class="fas fa-chart-line text-blue-500 mr-2"></i>요일별 트렌드 (광고비 vs 실매출 vs ROAS)</h3>
-                    <p class="text-xs text-gray-400 mb-4">META 실제 일별 지출과 자사몰 매출 매칭 결과를 시각화합니다.</p>
-                    <div class="h-[400px] w-full relative">
-                        <canvas id="dailyChart"></canvas>
+                <!-- ★ [탭 2] 일별 트렌드 차트 (3개의 패널 완벽 분리 적용) ★ -->
+                <div v-show="activeTab === 'chart'" class="space-y-6">
+                    <!-- 메인 차트 (광고비 vs 실매출) -->
+                    <div class="bg-white p-6 rounded-b-2xl rounded-tr-2xl shadow-sm border border-gray-200">
+                        <h3 class="text-sm font-bold text-gray-800 mb-2"><i class="fas fa-chart-line text-blue-500 mr-2"></i>메인 트렌드 (광고비 vs 실매출)</h3>
+                        <p class="text-xs text-gray-400 mb-4">수치 파악을 방해하던 ROAS 선을 아래 서브 패널로 분리하여 가독성을 극대화했습니다.</p>
+                        <div class="h-[280px] w-full relative">
+                            <canvas id="dailyChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- 서브 패널 3개 (ROAS, CTR, 구매건수) -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                            <p class="text-xs font-bold text-gray-500 mb-2"><i class="fas fa-chart-pie text-emerald-500 mr-1"></i>일별 진성 ROAS (%)</p>
+                            <div class="h-[140px] w-full relative"><canvas id="roasChart"></canvas></div>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                            <p class="text-xs font-bold text-gray-500 mb-2"><i class="fas fa-mouse-pointer text-teal-500 mr-1"></i>일별 클릭률 (CTR %)</p>
+                            <div class="h-[140px] w-full relative"><canvas id="ctrChart"></canvas></div>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                            <p class="text-xs font-bold text-gray-500 mb-2"><i class="fas fa-shopping-bag text-indigo-500 mr-1"></i>일별 구매 건수 (META)</p>
+                            <div class="h-[140px] w-full relative"><canvas id="purchaseChart"></canvas></div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- [탭 3] 광고별 상세 성과 (Action Plan) -->
+                <!-- ★ [탭 3] 광고별 상세 성과 (왕관 + 스마트 액션플랜 적용) ★ -->
                 <div v-show="activeTab === 'ranking'" class="bg-white rounded-b-2xl rounded-tr-2xl shadow-sm border border-gray-200 overflow-hidden">
                     <div class="p-4 bg-gray-50/50 border-b border-gray-200 flex justify-between items-center">
                         <p class="text-sm font-bold text-gray-800"><i class="fas fa-medal text-yellow-500 mr-2"></i>광고별 상세 성과 및 실행 가이드 (Action Plan)</p>
@@ -313,7 +332,7 @@
                                     <th class="p-4 font-bold text-right">광고비</th>
                                     <th class="p-4 font-bold text-right">구매(META)</th>
                                     <th class="p-4 font-bold text-right">진성 ROAS</th>
-                                    <th class="p-4 font-bold text-right">CPA(결과당비용)</th>
+                                    <th class="p-4 font-bold text-right">CPA(결과비용)</th>
                                     <th class="p-4 font-bold text-center">검토 (Action)</th>
                                 </tr>
                             </thead>
@@ -321,7 +340,11 @@
                                 <tr v-if="rankedAdData.length === 0"><td colspan="6" class="p-10 text-center text-gray-400">데이터를 연동하세요.</td></tr>
                                 <tr v-for="(ad, index) in rankedAdData" :key="index" class="border-b border-gray-50 hover:bg-blue-50/30 transition-colors">
                                     <td class="p-4 text-sm text-gray-800 font-bold truncate max-w-[280px]">
-                                        <span v-if="index === 0" class="text-yellow-500 mr-2"><i class="fas fa-crown"></i></span>
+                                        <!-- Top 3 왕관 적용 -->
+                                        <span v-if="index === 0" class="text-yellow-500 mr-2" title="1위"><i class="fas fa-crown text-lg"></i></span>
+                                        <span v-else-if="index === 1" class="text-gray-400 mr-2" title="2위"><i class="fas fa-crown text-base"></i></span>
+                                        <span v-else-if="index === 2" class="text-amber-600 mr-2" title="3위"><i class="fas fa-crown text-sm"></i></span>
+                                        <span v-else class="text-gray-300 mr-3 text-xs w-4 inline-block text-center">{{ index + 1 }}</span>
                                         {{ ad.name }}
                                     </td>
                                     <td class="p-4 text-sm text-gray-600 text-right">{{ ad.spend.toLocaleString() }}원</td>
@@ -329,10 +352,13 @@
                                     <td class="p-4 text-sm text-right font-extrabold" :class="ad.calcRoas >= 200 ? 'text-blue-600' : 'text-gray-700'">{{ ad.calcRoas.toFixed(0) }}%</td>
                                     <td class="p-4 text-sm text-right text-gray-600">{{ ad.purchase > 0 ? Math.round(ad.spend / ad.purchase).toLocaleString() : '-' }}원</td>
                                     <td class="p-4 text-center">
+                                        <!-- 고도화된 액션 플랜 로직 -->
                                         <div class="flex flex-col items-center justify-center">
-                                            <span v-if="ad.calcRoas >= 200" class="text-[10px] font-bold px-2.5 py-0.5 border border-blue-200 bg-blue-50 text-blue-700 rounded-full">유지 검토</span>
-                                            <span v-else-if="ad.spend > 50000 && ad.calcRoas < 100" class="text-[10px] font-bold px-2.5 py-0.5 border border-red-200 bg-red-50 text-red-600 rounded-full">중단 검토</span>
-                                            <span v-else class="text-[10px] font-bold px-2.5 py-0.5 border border-gray-200 bg-gray-50 text-gray-500 rounded-full">관찰</span>
+                                            <span v-if="ad.calcRoas >= 250" class="text-[10px] font-bold px-2.5 py-0.5 border border-purple-200 bg-purple-50 text-purple-700 rounded-full">🚀 예산 증액</span>
+                                            <span v-else-if="ad.calcRoas >= 150" class="text-[10px] font-bold px-2.5 py-0.5 border border-blue-200 bg-blue-50 text-blue-700 rounded-full">✅ 유지 (우수)</span>
+                                            <span v-else-if="ad.spend >= 30000 && ad.purchase === 0 && ad.ctr < 1.0" class="text-[10px] font-bold px-2.5 py-0.5 border border-red-200 bg-red-600 text-white rounded-full">❌ 즉시 중단</span>
+                                            <span v-else-if="ad.spend >= 50000 && ad.calcRoas < 100" class="text-[10px] font-bold px-2.5 py-0.5 border border-red-200 bg-red-50 text-red-600 rounded-full">⚠️ 중단 검토</span>
+                                            <span v-else class="text-[10px] font-bold px-2.5 py-0.5 border border-gray-200 bg-gray-50 text-gray-500 rounded-full">👀 관찰 대기</span>
                                         </div>
                                     </td>
                                 </tr>
@@ -351,7 +377,7 @@
         createApp({
             setup() {
                 const state = reactive({
-                    activeTab: 'ai', // ai, chart, ranking 3가지로 압축
+                    activeTab: 'ai', 
                     isThisWeekLoaded: false,
                     isLastWeekLoaded: false,
                     reportGenerated: false,
@@ -371,6 +397,10 @@
                 });
 
                 let dailyChartInstance = null;
+                let roasChartInst = null;
+                let ctrChartInst = null;
+                let purchaseChartInst = null;
+
                 const sortedKeys = computed(() => Object.keys(state.c_dailyMap).sort());
 
                 const getDayName = (dateStr) => {
@@ -550,7 +580,8 @@
                             let minDate = datesArr[0];
                             let maxDate = datesArr[datesArr.length - 1];
                             let fullDates = getDatesArray(minDate, maxDate);
-                            fullDates.forEach(d => { dailyMap[d] = { spend: 0, manualRev: 0 }; });
+                            // 일별 통계용 imp, click, purchase 변수 추가
+                            fullDates.forEach(d => { dailyMap[d] = { spend: 0, manualRev: 0, imp: 0, click: 0, purchase: 0 }; });
                         }
                     }
 
@@ -578,6 +609,9 @@
 
                             if (dateVal !== 'Unknown' && dailyMap[dateVal]) {
                                 dailyMap[dateVal].spend += spend;
+                                dailyMap[dateVal].imp += imp;
+                                dailyMap[dateVal].click += click;
+                                dailyMap[dateVal].purchase += purchase;
                             }
                         }
                     }
@@ -646,49 +680,85 @@
                     reader.readAsArrayBuffer(file);
                 };
 
-                const renderDailyChart = () => {
-                    if(dailyChartInstance) dailyChartInstance.destroy();
+                // ★ 완벽 분리된 4개의 차트 렌더링 함수 ★
+                const renderAllCharts = () => {
                     const labels = sortedKeys.value.map(k => getDayName(k) || k);
                     
-                    const spendData = sortedKeys.value.map(l => state.c_dailyMap[l].spend);
+                    const spendData = sortedKeys.value.map(l => state.c_dailyMap[l].spend || 0);
                     const revData = sortedKeys.value.map(l => Number(state.c_dailyMap[l].manualRev) || 0);
                     const roasData = sortedKeys.value.map(l => {
                         let sp = state.c_dailyMap[l].spend;
                         let rev = Number(state.c_dailyMap[l].manualRev) || 0;
                         return sp > 0 ? ((rev / sp) * 100).toFixed(0) : 0;
                     });
+                    const ctrData = sortedKeys.value.map(l => {
+                        let imp = state.c_dailyMap[l].imp || 0;
+                        let clk = state.c_dailyMap[l].click || 0;
+                        return imp > 0 ? ((clk / imp) * 100).toFixed(2) : 0;
+                    });
+                    const purchaseData = sortedKeys.value.map(l => state.c_dailyMap[l].purchase || 0);
 
-                    const ctx = document.getElementById('dailyChart').getContext('2d');
-                    dailyChartInstance = new Chart(ctx, {
+                    // 1. 메인 차트 (광고비 vs 실매출)
+                    if(dailyChartInstance) dailyChartInstance.destroy();
+                    const ctx1 = document.getElementById('dailyChart').getContext('2d');
+                    dailyChartInstance = new Chart(ctx1, {
                         type: 'line',
                         data: {
                             labels: labels,
                             datasets: [
-                                { label: '광고비(원)', data: spendData, type: 'bar', backgroundColor: 'rgba(59, 130, 246, 0.2)', yAxisID: 'y' },
-                                { label: '자사몰 실매출(원)', data: revData, borderColor: '#2563eb', backgroundColor: '#2563eb', yAxisID: 'y', tension: 0.3, borderWidth: 3 },
-                                { label: '진성 ROAS(%)', data: roasData, borderColor: '#10b981', backgroundColor: '#10b981', yAxisID: 'y1', tension: 0.3, borderDash: [5, 5] }
+                                { label: '광고비(원)', data: spendData, type: 'bar', backgroundColor: 'rgba(59, 130, 246, 0.2)' },
+                                { label: '자사몰 실매출(원)', data: revData, borderColor: '#2563eb', backgroundColor: '#2563eb', tension: 0.3, borderWidth: 3 }
                             ]
                         },
-                        options: {
-                            responsive: true, maintainAspectRatio: false,
-                            interaction: { mode: 'index', intersect: false },
-                            scales: {
-                                y: { type: 'linear', display: true, position: 'left', grid: { color: '#f8fafc' }, min: 0 },
-                                y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, min: 0 }
-                            }
-                        }
+                        options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false } }
+                    });
+
+                    // 2. 서브 차트 (ROAS)
+                    if(roasChartInst) roasChartInst.destroy();
+                    const ctx2 = document.getElementById('roasChart').getContext('2d');
+                    roasChartInst = new Chart(ctx2, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{ label: 'ROAS(%)', data: roasData, borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', tension: 0.3, fill: true }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                    });
+
+                    // 3. 서브 차트 (CTR)
+                    if(ctrChartInst) ctrChartInst.destroy();
+                    const ctx3 = document.getElementById('ctrChart').getContext('2d');
+                    ctrChartInst = new Chart(ctx3, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{ label: 'CTR(%)', data: ctrData, borderColor: '#14b8a6', backgroundColor: 'rgba(20, 184, 166, 0.1)', tension: 0.3, fill: true }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                    });
+
+                    // 4. 서브 차트 (구매건수)
+                    if(purchaseChartInst) purchaseChartInst.destroy();
+                    const ctx4 = document.getElementById('purchaseChart').getContext('2d');
+                    purchaseChartInst = new Chart(ctx4, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{ label: '구매건수', data: purchaseData, backgroundColor: '#6366f1', borderRadius: 4 }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
                     });
                 };
 
                 watch(() => state.c_dailyMap, () => {
                     if (state.isThisWeekLoaded && state.activeTab === 'chart') {
-                        nextTick(() => renderDailyChart());
+                        nextTick(() => renderAllCharts());
                     }
                 }, { deep: true });
 
                 watch(() => state.activeTab, (newTab) => {
                     if (newTab === 'chart' && state.isThisWeekLoaded) {
-                        nextTick(() => renderDailyChart());
+                        nextTick(() => renderAllCharts());
                     }
                 });
 
