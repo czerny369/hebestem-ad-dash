@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>광고 퍼포먼스 분석 대시보드 (V15.0 AI & History)</title>
+    <title>광고 퍼포먼스 분석 대시보드 (V16.0 Ultimate)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -42,7 +42,7 @@
                 </div>
             </div>
             <div class="px-5 py-2.5 bg-blue-50 text-blue-700 border border-blue-100 rounded-lg font-bold text-sm flex items-center shadow-sm">
-                <i class="fas fa-check-circle mr-2"></i>V15.0 QA Complete
+                <i class="fas fa-check-circle mr-2"></i>V16.0 Ultimate Edition
             </div>
         </header>
 
@@ -61,7 +61,7 @@
                     <p v-if="isThisWeekLoaded" class="text-xs text-center text-blue-600 font-bold"><i class="fas fa-check-circle mr-1"></i>총 지출: {{ c_metrics.spend.toLocaleString() }}원</p>
                 </div>
 
-                <!-- 2. 요일별 자사몰 매출 폼 (버그 완벽 수정) -->
+                <!-- 2. 요일별 자사몰 매출 폼 -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 border-l-4 border-l-blue-500 flex flex-col">
                     <div class="flex justify-between items-center mb-3">
                         <h2 class="text-sm font-bold text-gray-800"><i class="fas fa-edit text-blue-500 mr-2"></i>일별 자사몰 매출</h2>
@@ -91,7 +91,7 @@
                     </div>
                 </div>
 
-                <!-- 3. 지난 주 META 데이터 (누락된 UI 완벽 복구) -->
+                <!-- 3. 지난 주 META 데이터 -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border" :class="isLastWeekLoaded ? 'border-teal-400 bg-teal-50/20' : 'border-gray-100'">
                     <h2 class="text-sm font-bold text-gray-800 mb-2"><i class="fas fa-history text-teal-500 mr-2"></i>지난 주 광고비 연동 (META)</h2>
                     <div class="drop-zone p-4 rounded-xl text-center cursor-pointer mb-2" @click="$refs.filePrev.click()">
@@ -102,14 +102,14 @@
                     <p v-if="isLastWeekLoaded" class="text-xs text-center text-teal-600 font-bold"><i class="fas fa-check-circle mr-1"></i>총 지출: {{ p_metrics.spend.toLocaleString() }}원</p>
                 </div>
 
-                <!-- 4. 지난 주 자사몰 총매출 (누락된 UI 완벽 복구) -->
+                <!-- 4. 지난 주 자사몰 총매출 -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 border-l-4 border-l-green-500">
                     <h2 class="text-sm font-bold text-gray-800 mb-2"><i class="fas fa-money-bill-wave text-green-500 mr-2"></i>지난 주 자사몰 총 매출</h2>
                     <p class="text-[10px] text-gray-400 mb-2">WoW 비교를 위해 지난주의 전체 실매출을 입력하세요.</p>
                     <input type="number" v-model.number="p_manualTotalRev" class="w-full p-2.5 text-right text-base font-bold text-green-700 bg-green-50 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-400 focus:outline-none" placeholder="0">
                 </div>
 
-                <!-- 5. 지난 보고서 저장 (히스토리 기능) -->
+                <!-- 5. 지난 보고서 저장 (히스토리) -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex-grow flex flex-col">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-sm font-bold text-gray-800"><i class="fas fa-clock-rotate-left text-gray-600 mr-2"></i>지난 보고서</h2>
@@ -163,34 +163,40 @@
                     </div>
                 </div>
 
-                <!-- 탭 네비게이션 -->
-                <div class="bg-gray-100/50 rounded-t-2xl border-b border-gray-200 flex px-2 pt-2 mt-4">
-                    <button @click="activeTab = 'ai'" class="tab-btn px-8 py-3 text-sm font-bold text-gray-500 rounded-t-lg" :class="{ 'tab-active': activeTab === 'ai' }">
-                        GPT 보고서
+                <!-- ★ 4개 탭 네비게이션 (마케터님이 선호하신 시안 반영) ★ -->
+                <div class="bg-white rounded-t-2xl border-b border-gray-200 flex flex-wrap px-2 pt-2 mt-4 shadow-sm">
+                    <button @click="activeTab = 'ai'" class="tab-btn px-6 py-3 text-sm font-bold text-gray-500 rounded-t-lg flex items-center" :class="{ 'tab-active': activeTab === 'ai' }">
+                        <i class="fas fa-wand-magic-sparkles text-purple-500 mr-2"></i>AI 주간 리포트 & Chat
                     </button>
-                    <button @click="activeTab = 'ranking'" class="tab-btn px-8 py-3 text-sm font-bold text-gray-500 rounded-t-lg" :class="{ 'tab-active': activeTab === 'ranking' }">
-                        광고별 성과
+                    <button @click="activeTab = 'ranking'" class="tab-btn px-6 py-3 text-sm font-bold text-gray-500 rounded-t-lg flex items-center" :class="{ 'tab-active': activeTab === 'ranking' }">
+                        <i class="fas fa-medal text-yellow-500 mr-2"></i>광고별 상세 성과 (Action Plan)
                     </button>
-                    <button @click="activeTab = 'chart'" class="tab-btn px-8 py-3 text-sm font-bold text-gray-500 rounded-t-lg" :class="{ 'tab-active': activeTab === 'chart' }">
-                        데이터 확인 (7)
+                    <button @click="activeTab = 'chart'" class="tab-btn px-6 py-3 text-sm font-bold text-gray-500 rounded-t-lg flex items-center" :class="{ 'tab-active': activeTab === 'chart' }">
+                        <i class="fas fa-chart-line text-blue-500 mr-2"></i>일별 트렌드 차트
+                    </button>
+                    <button @click="activeTab = 'wow'" class="tab-btn px-6 py-3 text-sm font-bold text-gray-500 rounded-t-lg flex items-center" :class="{ 'tab-active': activeTab === 'wow' }">
+                        <i class="fas fa-balance-scale text-teal-500 mr-2"></i>전주 대비 비교
                     </button>
                 </div>
 
-                <!-- ★ [탭 1] GPT 보고서 및 챗봇 (실제 작동 로직 탑재) ★ -->
+                <!-- [탭 1] AI 주간 리포트 & Chat -->
                 <div v-show="activeTab === 'ai'" class="space-y-4">
-                    
                     <div class="bg-white p-6 rounded-b-2xl rounded-tr-2xl shadow-sm border border-gray-200">
                         <div class="flex justify-between items-start mb-4">
                             <div>
-                                <h3 class="text-lg font-bold text-gray-800 mb-2"><i class="fas fa-wand-magic-sparkles text-blue-500 mr-2"></i>GPT 주간 해석</h3>
-                                <p class="text-sm text-gray-500 leading-relaxed">계산 결과가 저장되었습니다. 보고서 생성을 눌러 GPT 해석을 받아보세요.<br>GPT의 원인 설명은 가설일 수 있습니다. 확인된 수치와 구분해 검토하세요.</p>
+                                <h3 class="text-lg font-bold text-gray-800 mb-1">AI 주간 해석 리포트</h3>
+                                <p class="text-sm text-gray-500">업로드된 데이터를 바탕으로 에이전트가 자동 생성한 인사이트입니다.</p>
                             </div>
-                            <button @click="generateReport" class="px-5 py-2.5 bg-white text-blue-600 text-sm font-bold rounded-lg border border-blue-200 hover:bg-blue-50 transition shadow-sm">
-                                보고서 생성
+                            <button @click="generateReport" class="px-4 py-2 bg-indigo-50 text-indigo-600 text-sm font-bold rounded-xl border border-indigo-200 hover:bg-indigo-100 transition shadow-sm flex items-center">
+                                <i class="fas fa-rotate mr-2"></i>리포트 업데이트
                             </button>
                         </div>
                         
-                        <div v-if="reportGenerated" class="mt-6 p-6 bg-[#f8fafc] border border-gray-200 rounded-xl text-sm text-gray-800 space-y-4 leading-relaxed shadow-inner">
+                        <div v-if="!reportGenerated" class="py-12 text-center text-gray-400 text-sm border border-dashed border-gray-200 rounded-xl my-4">
+                            데이터를 업로드하면 AI 해석이 생성됩니다. (상단의 '리포트 업데이트' 버튼을 누르세요)
+                        </div>
+
+                        <div v-else class="mt-4 p-6 bg-[#f8fafc] border border-gray-200 rounded-xl text-sm text-gray-800 space-y-4 leading-relaxed shadow-inner">
                             <p class="text-base"><i class="fas fa-bullseye text-blue-500 mr-2"></i><span class="font-extrabold text-blue-800">핵심 진단:</span> 이번 주 총 광고비는 <b>{{ c_metrics.spend.toLocaleString() }}원</b>, 총 실매출은 <b>{{ c_manualTotalRev.toLocaleString() }}원</b>으로 진성 ROAS <b>{{ totalRoas.toFixed(0) }}%</b>를 기록했습니다.</p>
                             <hr class="border-gray-200">
                             <p><span class="inline-block w-6 text-center text-gray-400">1.</span> <span class="font-bold">퍼널 유입(CTR) 분석:</span> 클릭률 {{ c_metrics.ctr.toFixed(2) }}%로, {{ c_metrics.ctr >= 1.5 ? '현재 소재들의 썸네일과 후킹 포인트가 타겟의 시선을 매우 성공적으로 확보하고 있습니다.' : '유입 효율이 다소 떨어집니다. 영상 3초 구간의 카피 변경이나 새로운 썸네일 A/B 테스트가 시급합니다.' }}</p>
@@ -199,12 +205,11 @@
                         </div>
                     </div>
 
-                    <!-- 이 보고서에 질문하기 (진짜 작동하는 챗봇) -->
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-                        <h3 class="text-lg font-bold text-gray-800 mb-5">이 보고서에 질문하기</h3>
+                    <!-- 이 보고서에 질문하기 (챗봇) -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 space-y-4">
+                        <h3 class="text-lg font-bold text-gray-800">이 보고서에 질문하기</h3>
                         
-                        <!-- 추천 질문 버튼 -->
-                        <div class="flex flex-wrap gap-2.5 mb-5">
+                        <div class="flex flex-wrap gap-2.5">
                             <button @click="sendChat('어떤 광고를 먼저 확인해야 해?')" class="px-3.5 py-2 bg-white border border-gray-200 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition shadow-sm">
                                 어떤 광고를 먼저 확인해야 해?
                             </button>
@@ -216,18 +221,16 @@
                             </button>
                         </div>
 
-                        <!-- 챗봇 대화 기록 창 -->
-                        <div v-if="chatMessages.length > 0" class="mb-5 space-y-4 max-h-[300px] overflow-y-auto custom-scroll p-4 bg-gray-50 rounded-xl border border-gray-100">
+                        <div v-if="chatMessages.length > 0" class="space-y-4 max-h-[280px] overflow-y-auto custom-scroll p-4 bg-gray-50 rounded-xl border border-gray-100">
                             <div v-for="(msg, index) in chatMessages" :key="index" class="flex" :class="msg.role === 'user' ? 'justify-end' : 'justify-start'">
                                 <div v-if="msg.role === 'ai'" class="w-8 h-8 rounded-full bg-blue-100 text-blue-500 flex items-center justify-center mr-2 flex-shrink-0">
                                     <i class="fas fa-robot text-sm"></i>
                                 </div>
                                 <div class="max-w-[80%] rounded-2xl p-3 text-sm leading-relaxed" 
-                                     :class="msg.role === 'user' ? 'bg-[#8da2e5] text-white rounded-br-none' : 'bg-white border border-gray-200 text-gray-700 rounded-bl-none shadow-sm'">
+                                     :class="msg.role === 'user' ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white border border-gray-200 text-gray-700 rounded-bl-none shadow-sm'">
                                     <span v-html="msg.content"></span>
                                 </div>
                             </div>
-                            <!-- 타이핑 인디케이터 -->
                             <div v-if="isTyping" class="flex justify-start">
                                 <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-500 flex items-center justify-center mr-2 flex-shrink-0">
                                     <i class="fas fa-robot text-sm"></i>
@@ -238,11 +241,10 @@
                             </div>
                         </div>
                         
-                        <!-- 채팅 입력창 -->
-                        <div class="relative bg-white rounded-xl border-2 border-gray-200 focus-within:border-[#8da2e5] transition-colors p-1">
+                        <div class="relative bg-white rounded-xl border-2 border-gray-200 focus-within:border-blue-500 transition-colors p-1">
                             <textarea v-model="chatInput" @keyup.enter.prevent="sendChat()" rows="2" placeholder="예: 기존02와 사본의 성과 차이를 설명해줘" class="w-full bg-transparent p-3 text-sm text-gray-800 focus:outline-none resize-none"></textarea>
                             <div class="absolute right-2 bottom-2">
-                                <button @click="sendChat()" class="w-10 h-10 bg-[#8da2e5] text-white rounded-lg flex items-center justify-center hover:bg-blue-500 transition shadow-md">
+                                <button @click="sendChat()" class="w-10 h-10 bg-blue-600 text-white rounded-lg flex items-center justify-center hover:bg-blue-700 transition shadow-md">
                                     <i class="fas fa-paper-plane"></i>
                                 </button>
                             </div>
@@ -250,10 +252,10 @@
                     </div>
                 </div>
 
-                <!-- [탭 2] 광고별 성과 (액션 플랜) -->
+                <!-- [탭 2] 광고별 상세 성과 (Action Plan) -->
                 <div v-show="activeTab === 'ranking'" class="bg-white rounded-b-2xl rounded-tr-2xl shadow-sm border border-gray-200 overflow-hidden">
                     <div class="p-4 bg-gray-50/50 border-b border-gray-200 flex justify-between items-center">
-                        <p class="text-sm font-bold text-gray-800">광고별 상세 성과 (랭킹순)</p>
+                        <p class="text-sm font-bold text-gray-800"><i class="fas fa-medal text-yellow-500 mr-2"></i>광고별 상세 성과 및 실행 가이드 (Action Plan)</p>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse whitespace-nowrap">
@@ -264,7 +266,7 @@
                                     <th class="p-4 font-bold text-right">구매(META)</th>
                                     <th class="p-4 font-bold text-right">진성 ROAS</th>
                                     <th class="p-4 font-bold text-right">CPA(결과당비용)</th>
-                                    <th class="p-4 font-bold text-center">검토</th>
+                                    <th class="p-4 font-bold text-center">검토 (Action)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -291,17 +293,20 @@
                     </div>
                 </div>
 
-                <!-- [탭 3] 데이터 확인 (일별 차트 및 WoW 비교) -->
-                <div v-show="activeTab === 'chart'" class="space-y-6">
-                    <div class="bg-white p-6 rounded-b-2xl rounded-tr-2xl shadow-sm border border-gray-200">
-                        <h3 class="text-sm font-bold text-gray-800 mb-4"><i class="fas fa-chart-line mr-2 text-blue-500"></i>요일별 트렌드 (광고비 vs 실매출 vs ROAS)</h3>
-                        <div class="h-[280px] w-full relative">
-                            <canvas id="dailyChart"></canvas>
-                        </div>
+                <!-- [탭 3] 일별 트렌드 차트 -->
+                <div v-show="activeTab === 'chart'" class="bg-white p-6 rounded-b-2xl rounded-tr-2xl shadow-sm border border-gray-200 space-y-4">
+                    <h3 class="text-sm font-bold text-gray-800 mb-2"><i class="fas fa-chart-line text-blue-500 mr-2"></i>요일별 트렌드 (광고비 vs 실매출 vs ROAS)</h3>
+                    <p class="text-xs text-gray-400 mb-4">META 실제 일별 지출과 자사몰 매출 매칭 결과를 시각화합니다.</p>
+                    <div class="h-[320px] w-full relative">
+                        <canvas id="dailyChart"></canvas>
                     </div>
-                    
+                </div>
+
+                <!-- [탭 4] 전주 대비 비교 -->
+                <div v-show="activeTab === 'wow'" class="bg-white p-6 rounded-b-2xl rounded-tr-2xl shadow-sm border border-gray-200 space-y-4">
+                    <h3 class="text-sm font-bold text-gray-800 mb-4"><i class="fas fa-balance-scale text-teal-500 mr-2"></i>전주 대비 핵심 퍼포먼스 비교 (WoW)</h3>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 text-center relative overflow-hidden">
+                        <div class="bg-gray-50 p-5 rounded-2xl border text-center relative overflow-hidden">
                             <div class="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
                             <p class="text-xs font-bold text-gray-500 mb-3">진성 ROAS 비교</p>
                             <div class="flex justify-between items-end mb-3">
@@ -312,7 +317,7 @@
                                 {{ Math.abs(totalRoas - wowPrevRoas).toFixed(1) }}%p {{ totalRoas >= wowPrevRoas ? '상승' : '하락' }}
                             </span>
                         </div>
-                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 text-center relative overflow-hidden">
+                        <div class="bg-gray-50 p-5 rounded-2xl border text-center relative overflow-hidden">
                             <div class="absolute top-0 left-0 w-full h-1 bg-teal-500"></div>
                             <p class="text-xs font-bold text-gray-500 mb-3">유입 CTR 비교</p>
                             <div class="flex justify-between items-end mb-3">
@@ -323,7 +328,7 @@
                                 {{ Math.abs(c_metrics.ctr - p_metrics.ctr).toFixed(2) }}%p
                             </span>
                         </div>
-                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 text-center relative overflow-hidden">
+                        <div class="bg-gray-50 p-5 rounded-2xl border text-center relative overflow-hidden">
                             <div class="absolute top-0 left-0 w-full h-1 bg-indigo-500"></div>
                             <p class="text-xs font-bold text-gray-500 mb-3">장바구니 전환율 비교</p>
                             <div class="flex justify-between items-end mb-3">
@@ -361,7 +366,6 @@
                     
                     reportHistory: JSON.parse(localStorage.getItem('hebestem_reports')) || [],
                     
-                    // 챗봇 상태
                     chatInput: '',
                     chatMessages: [],
                     isTyping: false
@@ -406,7 +410,6 @@
                     state.reportGenerated = true;
                 };
 
-                // ★ 완벽하게 작동하는 챗봇(AI 모의 응답) 기능 ★
                 const sendChat = (presetText = null) => {
                     const msg = presetText || state.chatInput.trim();
                     if(!msg) return;
@@ -415,7 +418,6 @@
                     state.chatInput = '';
                     state.isTyping = true;
                     
-                    // AI 타이핑 딜레이 모방 (1.2초)
                     setTimeout(() => {
                         let reply = "";
                         const bestAd = rankedAdData.value.length > 0 ? rankedAdData.value[0].name : "1위 소재";
@@ -424,19 +426,16 @@
                         if(msg.includes('우선순위') || msg.includes('먼저')) {
                             reply = `현재 성과를 기준으로 가장 먼저 확인하고 예산을 증액(Scale-up)해야 할 광고는 <b>'${bestAd}'</b>입니다. 기여 ROAS가 가장 높게 추정됩니다.<br><br>반면, <b>'${worstAd}'</b>는 지출 대비 결과가 저조하므로 즉시 중단을 검토하시기 바랍니다.`;
                         } else if (msg.includes('차이') || msg.includes('달라')) {
-                            reply = `<b>자사몰 실매출과 Meta 플랫폼 내의 구매 매출은 다를 수밖에 없습니다.</b><br><br>Meta는 '클릭 후 7일, 조회 후 1일'이라는 자체 기여 기간을 가지며, 네이버 검색 등 다른 채널과 중복 집계될 가능성이 높기 때문입니다. 따라서 대시보드 우측 상단에 표시되는 <b>'진성 ROAS(실매출 기준)'</b>를 핵심 성과 지표로 삼는 것이 안전합니다.`;
-                        } else if (msg.includes('기존02') || msg.includes('사본')) {
-                            reply = `이름에 '사본'이 포함된 광고들은 보통 최적화 기간(Learning Phase)이 덜 끝났거나 타겟이 겹쳐 기존 소재보다 CPA가 높아질 수 있습니다. A/B 테스트 목적이 아니라면 우수한 기존 소재 하나에 예산을 집중하는 것이 유리합니다.`;
+                            reply = `<b>자사몰 실매출과 Meta 플랫폼 내의 구매 매출은 다를 수밖에 없습니다.</b><br><br>Meta는 자체 기여 기간을 가지며 네이버 등 다른 채널과 중복 집계될 수 있습니다. 따라서 우측 상단의 <b>'진성 ROAS(실매출 기준)'</b>를 핵심 지표로 삼는 것이 안전합니다.`;
                         } else {
-                            reply = `해석해 드립니다:<br>현재 주간 총 지출액은 <b>${state.c_metrics.spend.toLocaleString()}원</b>이며, 장바구니 전환율은 <b>${state.c_metrics.atcRate.toFixed(2)}%</b>입니다.<br>전반적으로 랜딩 페이지의 설득력은 확보되었으나, ROAS 확장을 위해 '첫 구매 혜택 강화'나 '묶음 상품'을 메인으로 내세워 객단가(AOV)를 높이는 테스트를 권장합니다.`;
+                            reply = `해석해 드립니다:<br>현재 주간 총 지출액은 <b>${state.c_metrics.spend.toLocaleString()}원</b>이며, 장바구니 전환율은 <b>${state.c_metrics.atcRate.toFixed(2)}%</b>입니다.<br>전반적으로 랜딩 페이지 설득력은 확보되었으나, ROAS 확장을 위해 객단가(AOV)를 높이는 테스트를 권장합니다.`;
                         }
                         
                         state.chatMessages.push({ role: 'ai', content: reply });
                         state.isTyping = false;
                         
-                        // 채팅창 맨 아래로 자동 스크롤
                         nextTick(() => {
-                            const chatBox = document.querySelector('.custom-scroll.max-h-\\[300px\\]');
+                            const chatBox = document.querySelector('.custom-scroll.max-h-\\[280px\\]');
                             if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
                         });
                     }, 1200);
@@ -496,7 +495,6 @@
                     localStorage.setItem('hebestem_reports', JSON.stringify(state.reportHistory));
                 };
 
-                // ★ 날짜 리스트 생성 함수 (가장 빠른 날 ~ 늦은 날 7일 강제 생성) ★
                 const getDatesArray = (minStr, maxStr) => {
                     let dates = [];
                     try {
@@ -517,7 +515,6 @@
                     let hRow = -1;
                     let idx = { start:-1, name:-1, spend:-1, imp:-1, click:-1, landing:-1, atc:-1, purchase:-1 };
 
-                    // 1. 헤더 스캔
                     for (let i = 0; i < Math.min(data.length, 25); i++) {
                         if (!data[i]) continue;
                         let rowStr = data[i].join('').replace(/\s/g, ''); 
@@ -539,7 +536,6 @@
                     if (hRow === -1 || idx.spend === -1) return;
                     const getNum = val => (typeof val === 'number') ? val : (parseFloat((val || '').toString().replace(/,/g, '')) || 0);
 
-                    // 2. 최소/최대 날짜 찾기
                     let allDates = new Set();
                     for (let i = hRow + 1; i < data.length; i++) {
                         if (!data[i] || !data[i].length) continue;
@@ -559,7 +555,6 @@
                         }
                     }
 
-                    // 3. 실제 합산
                     for (let i = hRow + 1; i < data.length; i++) {
                         const r = data[i];
                         if (!r || !r.length) continue;
