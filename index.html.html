@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>광고 퍼포먼스 분석 대시보드 (V18.0 Final Evolution)</title>
+    <title>광고 퍼포먼스 분석 대시보드 (V19.0 Shareable)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- URL 압축 공유를 위한 LZString 라이브러리 추가 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&display=swap');
@@ -19,7 +21,7 @@
         .custom-scroll::-webkit-scrollbar { width: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        .history-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .history-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
         .typing-indicator span { animation: blink 1.4s infinite both; width: 4px; height: 4px; background: #94a3b8; border-radius: 50%; display: inline-block; margin: 0 2px; }
         .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
         .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
@@ -32,7 +34,8 @@
         <!-- 헤더 -->
         <header class="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <div class="flex items-center space-x-4">
-                <div class="bg-[#3b82f6] text-white w-12 h-12 rounded-xl flex items-center justify-center font-black text-2xl tracking-tighter shadow-md">
+                <!-- 요청하신 검정색 배경 로고 적용 -->
+                <div class="bg-gray-900 text-white w-12 h-12 rounded-xl flex items-center justify-center font-black text-2xl tracking-tighter shadow-md">
                     H
                 </div>
                 <div>
@@ -41,8 +44,8 @@
                     </h1>
                 </div>
             </div>
-            <div class="px-5 py-2.5 bg-blue-50 text-blue-700 border border-blue-100 rounded-lg font-bold text-sm flex items-center shadow-sm">
-                <i class="fas fa-check-circle mr-2"></i>V18.0 Final Evolution
+            <div class="px-5 py-2.5 bg-gray-800 text-white rounded-lg font-bold text-sm flex items-center shadow-sm">
+                <i class="fas fa-link mr-2"></i>V19.0 Link Sharing
             </div>
         </header>
 
@@ -109,30 +112,43 @@
                     <input type="number" v-model.number="p_manualTotalRev" class="w-full p-2.5 text-right text-base font-bold text-green-700 bg-green-50 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-400 focus:outline-none" placeholder="0">
                 </div>
 
-                <!-- 5. 지난 보고서 저장 (히스토리) -->
+                <!-- ★ 5. 지난 보고서 (디자인 반영 및 공유 기능 추가) ★ -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex-grow flex flex-col">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-sm font-bold text-gray-800"><i class="fas fa-clock-rotate-left text-gray-600 mr-2"></i>지난 보고서</h2>
-                        <button @click="saveReport" class="text-[10px] bg-gray-800 text-white px-2.5 py-1.5 rounded font-bold hover:bg-gray-700 transition shadow-sm">
+                    <div class="flex justify-between items-center mb-5">
+                        <h2 class="text-base font-bold text-[#1e293b] flex items-center">
+                            <i class="fas fa-clock-rotate-left text-gray-500 mr-2"></i>지난 보고서
+                        </h2>
+                        <!-- 요청하신 짙은 네이비 버튼 -->
+                        <button @click="saveReport" class="text-xs bg-[#1e293b] text-white px-3.5 py-1.5 rounded-lg font-bold hover:bg-gray-800 transition shadow-sm flex items-center">
                             <i class="fas fa-save mr-1"></i>현재 저장
                         </button>
                     </div>
                     
-                    <div class="flex-grow overflow-y-auto custom-scroll pr-1 space-y-3 max-h-[160px]">
-                        <div v-if="reportHistory.length === 0" class="text-center py-6 text-xs text-gray-400">저장된 보고서가 없습니다.</div>
+                    <div class="flex-grow overflow-y-auto custom-scroll pr-1 space-y-3 max-h-[300px]">
+                        <div v-if="reportHistory.length === 0" class="text-center py-6 text-xs text-gray-400 border border-dashed border-gray-200 rounded-xl">
+                            저장된 보고서가 없습니다.
+                        </div>
+                        
+                        <!-- 요청하신 깔끔한 카드 디자인 -->
                         <div v-for="report in reportHistory" :key="report.id" 
-                             class="history-card relative group bg-white border border-gray-200 p-3 rounded-xl cursor-pointer transition-all"
+                             class="history-card relative group bg-white border border-gray-200 p-4 rounded-xl cursor-pointer hover:border-blue-400 transition-all flex justify-between items-center shadow-sm"
                              @click="loadReport(report)">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="text-sm font-extrabold text-gray-800 tracking-tight">{{ report.title }}</p>
-                                    <p class="text-[10px] text-gray-500 mt-0.5">{{ report.year }}년 · 계산 보고서</p>
-                                </div>
-                                <i class="fas fa-arrow-up-right-from-square text-gray-300 group-hover:text-blue-500 transition-colors"></i>
+                            <div>
+                                <p class="text-lg font-black text-[#1e293b] tracking-tighter">{{ report.title }}</p>
+                                <p class="text-[11px] text-gray-500 mt-1">{{ report.year }}년 · 계산 보고서</p>
                             </div>
-                            <button @click.stop="deleteReport(report.id)" class="absolute -top-2 -right-2 bg-red-100 text-red-500 w-6 h-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center shadow-sm hover:bg-red-500 hover:text-white">
-                                <i class="fas fa-times text-[10px]"></i>
-                            </button>
+                            <div class="flex items-center space-x-1">
+                                <!-- 공유(내보내기) 버튼 -->
+                                <button @click.stop="shareReport(report)" class="p-2 text-gray-300 hover:text-blue-500 transition-colors" title="이 보고서 공유 링크 복사">
+                                    <i class="fas fa-external-link-square-alt text-xl"></i>
+                                </button>
+                                <!-- 휴지통 버튼 (호버 시에만 표시됨) -->
+                                <button @click.stop="deleteReport(report.id)" class="p-2 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100" title="삭제">
+                                    <i class="fas fa-trash-alt text-base"></i>
+                                </button>
+                            </div>
+                            <!-- 하단 꾸밈바 (이미지 디테일 살림) -->
+                            <div class="absolute bottom-0 left-4 right-4 h-1 bg-gray-100 rounded-t-md opacity-50"></div>
                         </div>
                     </div>
                 </div>
@@ -163,7 +179,7 @@
                     </div>
                 </div>
 
-                <!-- ★ 3개 탭 네비게이션 ★ -->
+                <!-- 탭 네비게이션 -->
                 <div class="bg-white rounded-t-2xl border-b border-gray-200 flex flex-wrap px-2 pt-2 mt-4 shadow-sm">
                     <button @click="activeTab = 'ai'" class="tab-btn px-6 py-3 text-sm font-bold text-gray-500 rounded-t-lg flex items-center" :class="{ 'tab-active': activeTab === 'ai' }">
                         <i class="fas fa-wand-magic-sparkles text-purple-500 mr-2"></i>AI 주간 리포트 & Chat
@@ -176,10 +192,10 @@
                     </button>
                 </div>
 
-                <!-- [탭 1] AI 주간 리포트 & Chat -->
+                <!-- [탭 1] AI 주간 리포트 & Chat (WoW 통합) -->
                 <div v-show="activeTab === 'ai'" class="space-y-4">
                     
-                    <!-- 1. 전주 대비 비교 (WoW) 맨 위 배치 -->
+                    <!-- 1. 전주 대비 비교 -->
                     <div class="bg-white p-6 rounded-b-2xl rounded-tr-2xl shadow-sm border border-gray-200 space-y-4">
                         <h3 class="text-sm font-bold text-gray-800 mb-4"><i class="fas fa-balance-scale text-teal-500 mr-2"></i>전주 대비 핵심 퍼포먼스 비교 (WoW)</h3>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -291,12 +307,11 @@
                     </div>
                 </div>
 
-                <!-- ★ [탭 2] 일별 트렌드 차트 (3개의 패널 완벽 분리 적용) ★ -->
+                <!-- [탭 2] 일별 트렌드 차트 (분리형) -->
                 <div v-show="activeTab === 'chart'" class="space-y-6">
-                    <!-- 메인 차트 (광고비 vs 실매출) -->
                     <div class="bg-white p-6 rounded-b-2xl rounded-tr-2xl shadow-sm border border-gray-200">
                         <h3 class="text-sm font-bold text-gray-800 mb-2"><i class="fas fa-chart-line text-blue-500 mr-2"></i>메인 트렌드 (광고비 vs 실매출)</h3>
-                        <p class="text-xs text-gray-400 mb-4">수치 파악을 방해하던 ROAS 선을 아래 서브 패널로 분리하여 가독성을 극대화했습니다.</p>
+                        <p class="text-xs text-gray-400 mb-4">가독성을 위해 수치 파악을 방해하던 기타 선들을 아래 서브 패널로 완벽히 분리했습니다.</p>
                         <div class="h-[280px] w-full relative">
                             <canvas id="dailyChart"></canvas>
                         </div>
@@ -319,7 +334,7 @@
                     </div>
                 </div>
 
-                <!-- ★ [탭 3] 광고별 상세 성과 (왕관 + 스마트 액션플랜 적용) ★ -->
+                <!-- [탭 3] 광고별 상세 성과 (Action Plan) -->
                 <div v-show="activeTab === 'ranking'" class="bg-white rounded-b-2xl rounded-tr-2xl shadow-sm border border-gray-200 overflow-hidden">
                     <div class="p-4 bg-gray-50/50 border-b border-gray-200 flex justify-between items-center">
                         <p class="text-sm font-bold text-gray-800"><i class="fas fa-medal text-yellow-500 mr-2"></i>광고별 상세 성과 및 실행 가이드 (Action Plan)</p>
@@ -340,7 +355,6 @@
                                 <tr v-if="rankedAdData.length === 0"><td colspan="6" class="p-10 text-center text-gray-400">데이터를 연동하세요.</td></tr>
                                 <tr v-for="(ad, index) in rankedAdData" :key="index" class="border-b border-gray-50 hover:bg-blue-50/30 transition-colors">
                                     <td class="p-4 text-sm text-gray-800 font-bold truncate max-w-[280px]">
-                                        <!-- Top 3 왕관 적용 -->
                                         <span v-if="index === 0" class="text-yellow-500 mr-2" title="1위"><i class="fas fa-crown text-lg"></i></span>
                                         <span v-else-if="index === 1" class="text-gray-400 mr-2" title="2위"><i class="fas fa-crown text-base"></i></span>
                                         <span v-else-if="index === 2" class="text-amber-600 mr-2" title="3위"><i class="fas fa-crown text-sm"></i></span>
@@ -352,7 +366,6 @@
                                     <td class="p-4 text-sm text-right font-extrabold" :class="ad.calcRoas >= 200 ? 'text-blue-600' : 'text-gray-700'">{{ ad.calcRoas.toFixed(0) }}%</td>
                                     <td class="p-4 text-sm text-right text-gray-600">{{ ad.purchase > 0 ? Math.round(ad.spend / ad.purchase).toLocaleString() : '-' }}원</td>
                                     <td class="p-4 text-center">
-                                        <!-- 고도화된 액션 플랜 로직 -->
                                         <div class="flex flex-col items-center justify-center">
                                             <span v-if="ad.calcRoas >= 250" class="text-[10px] font-bold px-2.5 py-0.5 border border-purple-200 bg-purple-50 text-purple-700 rounded-full">🚀 예산 증액</span>
                                             <span v-else-if="ad.calcRoas >= 150" class="text-[10px] font-bold px-2.5 py-0.5 border border-blue-200 bg-blue-50 text-blue-700 rounded-full">✅ 유지 (우수)</span>
@@ -400,6 +413,30 @@
                 let roasChartInst = null;
                 let ctrChartInst = null;
                 let purchaseChartInst = null;
+
+                // ★ 기능 추가: URL 파라미터로 공유된 보고서 즉시 불러오기 ★
+                onMounted(() => {
+                    if(typeof LZString === 'undefined') {
+                        console.warn("LZString 라이브러리를 로드하지 못했습니다. 공유 기능을 사용할 수 없습니다.");
+                        return;
+                    }
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const sharedData = urlParams.get('shared');
+                    if (sharedData) {
+                        try {
+                            const decompressed = LZString.decompressFromEncodedURIComponent(sharedData);
+                            const report = JSON.parse(decompressed);
+                            if (report && report.c_metrics) {
+                                loadReport(report, true); // true = confirm 알림 생략
+                                // 지저분한 URL 파라미터 정리
+                                window.history.replaceState({}, document.title, window.location.pathname);
+                                alert(`🔗 [${report.title}] 팀원이 공유한 보고서를 성공적으로 불러왔습니다!`);
+                            }
+                        } catch(e) {
+                            alert("유효하지 않거나 손상된 공유 링크입니다.");
+                        }
+                    }
+                });
 
                 const sortedKeys = computed(() => Object.keys(state.c_dailyMap).sort());
 
@@ -501,11 +538,11 @@
                     
                     state.reportHistory.unshift(newReport);
                     localStorage.setItem('hebestem_reports', JSON.stringify(state.reportHistory));
-                    alert(`[${dateTitle}] 보고서가 저장되었습니다!`);
+                    alert(`[${dateTitle}] 보고서가 PC에 안전하게 저장되었습니다!`);
                 };
 
-                const loadReport = (report) => {
-                    if(!confirm(`[${report.title}] 데이터를 불러오시겠습니까? 현재 화면 내용은 덮어씌워집니다.`)) return;
+                const loadReport = (report, force = false) => {
+                    if(!force && !confirm(`[${report.title}] 데이터를 불러오시겠습니까? 현재 화면 내용은 덮어씌워집니다.`)) return;
                     state.c_dailyMap = JSON.parse(JSON.stringify(report.c_dailyMap));
                     state.c_metrics = JSON.parse(JSON.stringify(report.c_metrics));
                     state.p_metrics = JSON.parse(JSON.stringify(report.p_metrics));
@@ -522,6 +559,30 @@
                     if(!confirm("이 보고서를 영구 삭제하시겠습니까?")) return;
                     state.reportHistory = state.reportHistory.filter(r => r.id !== id);
                     localStorage.setItem('hebestem_reports', JSON.stringify(state.reportHistory));
+                };
+
+                // ★ 기능 추가: URL 압축 공유 ★
+                const shareReport = (report) => {
+                    if(typeof LZString === 'undefined') {
+                        alert("현재 브라우저 환경에서 공유 기능을 지원하지 않습니다.");
+                        return;
+                    }
+                    try {
+                        const jsonStr = JSON.stringify(report);
+                        // 데이터를 짧게 압축하여 특수 URL(URI) 생성
+                        const compressed = LZString.compressToEncodedURIComponent(jsonStr);
+                        const baseUrl = window.location.origin + window.location.pathname;
+                        const shareUrl = `${baseUrl}?shared=${compressed}`;
+                        
+                        // 클립보드에 복사
+                        navigator.clipboard.writeText(shareUrl).then(() => {
+                            alert(`[${report.title}] 공유 링크가 복사되었습니다!\n팀원에게 링크를 주면 동일한 보고서를 볼 수 있습니다.`);
+                        }).catch(err => {
+                            alert("클립보드 복사에 실패했습니다. 브라우저 권한을 확인해주세요.");
+                        });
+                    } catch(e) {
+                        alert("보고서 용량이 너무 커서 링크 생성을 실패했습니다.");
+                    }
                 };
 
                 const getDatesArray = (minStr, maxStr) => {
@@ -580,7 +641,6 @@
                             let minDate = datesArr[0];
                             let maxDate = datesArr[datesArr.length - 1];
                             let fullDates = getDatesArray(minDate, maxDate);
-                            // 일별 통계용 imp, click, purchase 변수 추가
                             fullDates.forEach(d => { dailyMap[d] = { spend: 0, manualRev: 0, imp: 0, click: 0, purchase: 0 }; });
                         }
                     }
@@ -680,7 +740,6 @@
                     reader.readAsArrayBuffer(file);
                 };
 
-                // ★ 완벽 분리된 4개의 차트 렌더링 함수 ★
                 const renderAllCharts = () => {
                     const labels = sortedKeys.value.map(k => getDayName(k) || k);
                     
@@ -698,7 +757,6 @@
                     });
                     const purchaseData = sortedKeys.value.map(l => state.c_dailyMap[l].purchase || 0);
 
-                    // 1. 메인 차트 (광고비 vs 실매출)
                     if(dailyChartInstance) dailyChartInstance.destroy();
                     const ctx1 = document.getElementById('dailyChart').getContext('2d');
                     dailyChartInstance = new Chart(ctx1, {
@@ -713,7 +771,6 @@
                         options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false } }
                     });
 
-                    // 2. 서브 차트 (ROAS)
                     if(roasChartInst) roasChartInst.destroy();
                     const ctx2 = document.getElementById('roasChart').getContext('2d');
                     roasChartInst = new Chart(ctx2, {
@@ -725,7 +782,6 @@
                         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
                     });
 
-                    // 3. 서브 차트 (CTR)
                     if(ctrChartInst) ctrChartInst.destroy();
                     const ctx3 = document.getElementById('ctrChart').getContext('2d');
                     ctrChartInst = new Chart(ctx3, {
@@ -737,7 +793,6 @@
                         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
                     });
 
-                    // 4. 서브 차트 (구매건수)
                     if(purchaseChartInst) purchaseChartInst.destroy();
                     const ctx4 = document.getElementById('purchaseChart').getContext('2d');
                     purchaseChartInst = new Chart(ctx4, {
@@ -765,7 +820,7 @@
                 return { 
                     ...toRefs(state), sortedKeys, c_manualTotalRev, getDayName,
                     totalRoas, wowPrevRoas, rankedAdData,
-                    handleFile, handleRevenueFile, saveReport, loadReport, deleteReport,
+                    handleFile, handleRevenueFile, saveReport, loadReport, deleteReport, shareReport,
                     generateReport, sendChat
                 };
             }
