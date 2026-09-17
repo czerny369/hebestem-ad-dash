@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>광고 퍼포먼스 분석 대시보드 (V20.0 AI & Gallery)</title>
+    <title>광고 퍼포먼스 분석 대시보드 (V20.1 Safe Mode)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -42,8 +42,8 @@
                     </h1>
                 </div>
             </div>
-            <div class="px-5 py-2.5 bg-gray-800 text-white rounded-lg font-bold text-sm flex items-center shadow-sm">
-                <i class="fas fa-robot mr-2"></i>V20.0 Smart AI & Gallery
+            <div class="px-5 py-2.5 bg-green-50 text-green-700 border border-green-200 rounded-lg font-bold text-sm flex items-center shadow-sm cursor-help" title="오류 방지 시스템이 가동 중입니다.">
+                <i class="fas fa-shield-alt mr-2"></i>V20.1 Safe Mode 가동 중
             </div>
         </header>
 
@@ -174,7 +174,7 @@
                     </button>
                 </div>
 
-                <!-- [탭 1] AI 주간 리포트 & Chat -->
+                <!-- [탭 1] AI 주간 리포트 & Chat (WoW 통합) -->
                 <div v-show="activeTab === 'ai'" class="space-y-4">
                     
                     <div class="bg-white p-6 rounded-b-2xl rounded-tr-2xl shadow-sm border border-gray-200 space-y-4">
@@ -290,7 +290,6 @@
                 <div v-show="activeTab === 'chart'" class="space-y-6">
                     <div class="bg-white p-6 rounded-b-2xl rounded-tr-2xl shadow-sm border border-gray-200">
                         <h3 class="text-sm font-bold text-gray-800 mb-2"><i class="fas fa-chart-line text-blue-500 mr-2"></i>메인 트렌드 (광고비 vs 실매출)</h3>
-                        <p class="text-xs text-gray-400 mb-4">가독성을 위해 수치 파악을 방해하던 기타 선들을 아래 서브 패널로 완벽히 분리했습니다.</p>
                         <div class="h-[280px] w-full relative">
                             <canvas id="dailyChart"></canvas>
                         </div>
@@ -312,7 +311,7 @@
                     </div>
                 </div>
 
-                <!-- [탭 3] 광고별 상세 성과 (Action Plan) + 소재 갤러리 -->
+                <!-- [탭 3] 광고별 상세 성과 + 소재 갤러리 -->
                 <div v-show="activeTab === 'ranking'" class="bg-white rounded-b-2xl rounded-tr-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
                     <div class="p-4 bg-gray-50/50 border-b border-gray-200 flex justify-between items-center">
                         <p class="text-sm font-bold text-gray-800"><i class="fas fa-medal text-yellow-500 mr-2"></i>광고별 상세 성과 및 실행 가이드 (Action Plan)</p>
@@ -357,7 +356,7 @@
                         </table>
                     </div>
                     
-                    <!-- ★ 기능 추가: 광고 소재 이미지 갤러리 ★ -->
+                    <!-- 강화된 이미지 갤러리 -->
                     <div class="p-6 bg-white border-t border-gray-100">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-sm font-bold text-gray-800"><i class="fas fa-images text-blue-500 mr-2"></i>광고 소재 갤러리 (레퍼런스 보드)</h3>
@@ -369,10 +368,10 @@
                         
                         <div v-if="adImages.length === 0" class="text-center py-10 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50 cursor-pointer hover:bg-gray-100 transition" @click="$refs.imageInput.click()">
                             <i class="fas fa-cloud-upload-alt text-3xl text-gray-300 mb-2"></i>
-                            <p class="text-xs text-gray-500 font-medium">실행할 광고 소재나 썸네일 이미지를 올려 함께 검토하세요.</p>
+                            <p class="text-xs text-gray-500 font-medium">실행할 광고 썸네일 이미지를 올려 함께 검토하세요. (최대 6장)</p>
                         </div>
                         
-                        <div v-else class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                        <div v-else class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                             <div v-for="(img, idx) in adImages" :key="idx" class="relative group aspect-[4/5] rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-gray-50 flex items-center justify-center">
                                 <img :src="img" class="w-full h-full object-cover">
                                 <button @click="removeImage(idx)" class="absolute top-2 right-2 w-7 h-7 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center shadow-md hover:bg-red-600">
@@ -380,7 +379,7 @@
                                 </button>
                             </div>
                         </div>
-                        <p class="text-[11px] text-gray-400 mt-4"><i class="fas fa-info-circle mr-1"></i>업로드한 소재는 내 PC(지난 보고서)에만 자동 저장됩니다. URL을 통한 공유 시에는 브라우저 전송 한계로 인해 이미지는 제외됩니다.</p>
+                        <p class="text-[11px] text-gray-400 mt-4"><i class="fas fa-info-circle mr-1"></i>안전을 위해 이미지는 강력 압축되며 로컬 환경에만 저장됩니다. URL 링크 공유 시 이미지는 용량 초과 방지를 위해 제외됩니다.</p>
                     </div>
                 </div>
 
@@ -393,6 +392,19 @@
 
         createApp({
             setup() {
+                // 🚀 V20.1: 로컬 스토리지 데이터가 깨져있어도 사이트가 죽지 않도록 방어벽(try-catch) 설치
+                let safeHistory = [];
+                try {
+                    let raw = localStorage.getItem('hebestem_reports');
+                    if (raw) {
+                        safeHistory = JSON.parse(raw);
+                    }
+                } catch(err) {
+                    console.warn("로컬 스토리지 데이터 손상 감지. 초기화 진행.");
+                    localStorage.removeItem('hebestem_reports');
+                    safeHistory = [];
+                }
+
                 const state = reactive({
                     activeTab: 'ai', 
                     isThisWeekLoaded: false,
@@ -406,13 +418,12 @@
                     p_metrics: { spend: 0, impressions: 0, clicks: 0, landing: 0, atc: 0, purchase: 0, ctr: 0, cvr: 0, atcRate: 0 },
                     c_adData: [],
                     
-                    reportHistory: JSON.parse(localStorage.getItem('hebestem_reports')) || [],
+                    reportHistory: safeHistory, // 복구된 안전한 데이터 사용
                     
                     chatInput: '',
                     chatMessages: [],
                     isTyping: false,
                     
-                    // 갤러리 이미지 (Base64)
                     adImages: []
                 });
 
@@ -476,7 +487,7 @@
                     state.reportGenerated = true;
                 };
 
-                // ★ 기능 고도화: 전문가 수준의 스마트 챗봇 로직 ★
+                // 스마트 챗봇 로직
                 const sendChat = (presetText = null) => {
                     const msg = presetText || state.chatInput.trim();
                     if(!msg) return;
@@ -493,21 +504,18 @@
                         const currentCtr = state.c_metrics.ctr.toFixed(2);
                         const currentSpend = state.c_metrics.spend.toLocaleString();
                         
-                        // 스마트 키워드 매칭
                         if(msg.includes('우선순위') || msg.includes('먼저')) {
-                            reply = `<b>🔥 테스트 및 예산 증액 우선순위 가이드:</b><br><br>현재 성과를 기준으로 가장 먼저 확인하고 스케일업(예산 증액)해야 할 1순위 광고는 <b>'${bestAd}'</b>입니다. 기여 ROAS가 가장 높게 추정됩니다.<br><br>반면, <b>'${worstAd}'</b>는 지출 대비 결과가 저조하므로 오늘 즉시 중단(OFF)을 검토하시기 바랍니다.`;
+                            reply = `<b>🔥 테스트 및 예산 증액 우선순위 가이드:</b><br><br>현재 가장 먼저 스케일업(예산 증액)해야 할 1순위 광고는 <b>'${bestAd}'</b>입니다. 기여 ROAS가 가장 높게 추정됩니다.<br><br>반면, <b>'${worstAd}'</b>는 지출 대비 결과가 저조하므로 즉시 중단을 검토하시기 바랍니다.`;
                         } else if (msg.includes('차이') || msg.includes('달라')) {
-                            reply = `<b>📊 자사몰 실매출 vs Meta 매출 차이의 원인:</b><br><br>Meta 대시보드의 매출은 '클릭 후 7일, 조회 후 1일'이라는 자체 기여 기간을 거쳐 집계됩니다. 따라서 네이버 검색, 카카오톡 등 다른 채널과 중복 집계될 가능성이 매우 높습니다. <br><br>정확한 의사결정을 위해서는 우측 상단에 표시되는 <b>'진성 ROAS(실매출 기준)'</b>를 핵심 지표(KPI)로 삼는 것이 훨씬 안전합니다.`;
+                            reply = `<b>📊 자사몰 실매출 vs Meta 매출 차이 원인:</b><br><br>Meta는 '클릭 후 7일, 조회 후 1일'이라는 기여 기간을 거쳐 집계되어 네이버 등 다른 채널과 중복 집계될 가능성이 매우 높습니다.<br><br>정확한 의사결정을 위해서는 <b>'진성 ROAS(실매출 기준)'</b>를 핵심 지표(KPI)로 삼는 것이 안전합니다.`;
                         } else if (msg.includes('소재') || msg.includes('개수') || msg.includes('갯수') || msg.includes('늘리') || msg.includes('추가')) {
-                            reply = `<b>💡 광고 소재 확장(Variation)에 대한 컨설팅 의견:</b><br><br>현재 주간 총 광고비(${currentSpend}원) 볼륨을 고려할 때, 무작정 새로운 소재 갯수를 늘리는 것은 머신러닝 학습을 분산시켜 전체 CPA를 악화시킬 위험이 있습니다.<br><br>대신, 현재 1위로 성과가 좋은 <b>'${bestAd}' 소재의 카피만 바꾸거나, 첫 3초 영상만 변형(A/B 테스트)</b>하여 3~5개 내외의 활성 소재만 타이트하게 유지하는 것을 권장합니다.`;
+                            reply = `<b>💡 소재 확장(Variation) 컨설팅 의견:</b><br><br>현재 총 광고비(${currentSpend}원) 볼륨을 볼 때 무작정 새로운 소재를 늘리는 것은 머신러닝을 분산시켜 CPA를 악화시킬 수 있습니다.<br><br>대신, 1위 소재인 <b>'${bestAd}'의 카피만 바꾸거나 첫 3초만 변형</b>하여 3~5개 내외의 활성 소재만 타이트하게 유지하는 것을 권장합니다.`;
                         } else if (msg.includes('예산') || msg.includes('돈') || msg.includes('증액') || msg.includes('스케일업')) {
-                            reply = `<b>💸 예산 증액(Scale-up) 전문가 가이드:</b><br><br>현재 진성 ROAS가 ${currentRoas}%이므로 나쁘지 않은 상태입니다. ROAS가 150% 이상을 기록 중인 우수 캠페인은 <b>일일 예산을 15~20%씩 점진적으로 증액</b>(수직적 스케일업)해 보시길 권장합니다.<br><br>한 번에 30% 이상 급격하게 예산을 올리면 머신러닝이 초기화되어 효율이 망가질 수 있으니, 2~3일 간격을 두고 성과를 모니터링하며 천천히 올려주세요.`;
-                        } else if (msg.includes('타겟') || msg.includes('타겟팅') || msg.includes('누구')) {
-                            reply = `<b>🎯 타겟팅 최적화 제안:</b><br><br>현재 클릭률(CTR)이 ${currentCtr}%입니다. 요즘 Meta는 관심사 타겟보다 <b>논타겟(Broad)</b>으로 열어두었을 때 AI가 스스로 최적의 고객을 더 잘 찾아내는 추세입니다.<br><br>논타겟 캠페인의 비중을 높이시고, 장바구니에 담았으나 구매하지 않은 유저(ATC 이탈자)나 최근 30일 방문자를 대상으로 '리타겟팅 캠페인'을 소액(전체 예산의 10% 미만)으로 운영해보는 것을 추천합니다.`;
+                            reply = `<b>💸 예산 증액(Scale-up) 전문가 가이드:</b><br><br>현재 ROAS가 150% 이상인 캠페인은 <b>일일 예산을 15~20%씩 점진적으로 증액</b>해 보시길 권장합니다.<br><br>한 번에 30% 이상 급격하게 올리면 머신러닝이 초기화되어 효율이 망가질 수 있으니 2~3일 간격을 두고 올려주세요.`;
                         } else if (msg.includes('단가') || msg.includes('객단가') || msg.includes('cpa') || msg.includes('비용')) {
-                            reply = `<b>📈 비용 방어 및 객단가(AOV) 개선 가이드:</b><br><br>광고 최적화로 CPA를 낮추는 데에는 한계가 있습니다. 실질적인 마진(진성 ROAS)을 높이려면 <b>객단가 상승</b>이 필수적입니다.<br><br>'무료배송 허들 5만원으로 높이기', '인기상품 1+1 패키지 구성', '연관 상품 크로스셀링(세트 할인)' 등을 기획해 보세요. 1회 결제 금액이 20%만 올라도 동일한 CPA에서 ROAS는 엄청나게 폭발합니다.`;
+                            reply = `<b>📈 비용 방어 및 객단가(AOV) 개선 가이드:</b><br><br>광고 최적화로 CPA를 낮추는 데에는 한계가 있습니다. 실질적 마진을 높이려면 <b>객단가 상승</b>이 필수적입니다.<br><br>'무료배송 허들 높이기', '인기상품 1+1 기획', '연관 상품 세트 할인' 등을 고려해 보세요. 결제 금액이 20%만 올라도 ROAS는 폭발적으로 상승합니다.`;
                         } else {
-                            reply = `<b>🤖 마케팅 에이전트의 데이터 진단:</b><br><br>질문하신 내용에 대해 현재 데이터(ROAS ${currentRoas}%, CTR ${currentCtr}%)를 바탕으로 분석해보면, 전반적인 퍼널 최적화가 어느 정도 이루어진 상태입니다.<br><br>지금은 <b>'상세페이지 이탈률 개선'</b> 또는 <b>'고효율 소재의 예산 증액'</b>에 집중하는 것이 가장 효과적인 액션 플랜입니다. 소재, 예산, 타겟팅 등에 대해 구체적으로 질문해주시면 더 깊이 분석해 드리겠습니다!`;
+                            reply = `<b>🤖 마케팅 에이전트 진단:</b><br><br>현재 데이터(ROAS ${currentRoas}%, CTR ${currentCtr}%)를 볼 때 퍼널 최적화가 어느 정도 이루어진 상태입니다.<br><br>지금은 <b>'상세페이지 혜택 강조'</b> 또는 <b>'고효율 소재 예산 증액'</b>에 집중하는 것이 효과적입니다. 구체적으로 궁금한 점을 질문해 주세요!`;
                         }
                         
                         state.chatMessages.push({ role: 'ai', content: reply });
@@ -520,21 +528,26 @@
                     }, 1200);
                 };
 
-                // ★ 기능 추가: 이미지 업로드(리사이징 적용) 및 삭제 ★
+                // 🚀 V20.1: 이미지 업로드(초강력 압축 적용)
                 const handleImageUpload = (e) => {
                     const files = e.target.files;
                     if(!files) return;
+                    
+                    if(state.adImages.length + files.length > 6) {
+                        alert("용량 안전을 위해 이미지는 최대 6장까지만 업로드 가능합니다.");
+                        return;
+                    }
+
                     for(let i=0; i<files.length; i++) {
                         const file = files[i];
                         if(!file.type.startsWith('image/')) continue;
                         
-                        // 용량 확보를 위해 브라우저 단에서 Canvas로 리사이즈 후 Base64 인코딩
                         const reader = new FileReader();
                         reader.onload = (evt) => {
                             const img = new Image();
                             img.onload = () => {
                                 const canvas = document.createElement('canvas');
-                                const MAX_WIDTH = 600; // 가로 최대 600px로 제한
+                                const MAX_WIDTH = 400; // 해상도 대폭 축소 (안전)
                                 let scaleSize = 1;
                                 if(img.width > MAX_WIDTH) scaleSize = MAX_WIDTH / img.width;
                                 canvas.width = img.width * scaleSize;
@@ -543,15 +556,15 @@
                                 const ctx = canvas.getContext('2d');
                                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                                 
-                                // jpeg, 70% 품질로 압축
-                                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                                // jpeg 품질 50%로 강력 압축하여 로컬 스토리지 에러 완벽 차단
+                                const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
                                 state.adImages.push(dataUrl);
                             }
                             img.src = evt.target.result;
                         };
                         reader.readAsDataURL(file);
                     }
-                    e.target.value = ''; // input 초기화
+                    e.target.value = ''; 
                 };
 
                 const removeImage = (index) => {
@@ -585,16 +598,16 @@
                         isThisWeekLoaded: state.isThisWeekLoaded,
                         isLastWeekLoaded: state.isLastWeekLoaded,
                         p_manualTotalRev: state.p_manualTotalRev,
-                        adImages: [...state.adImages] // 저장 시 갤러리 이미지 포함
+                        adImages: [...state.adImages] 
                     };
                     
                     try {
                         state.reportHistory.unshift(newReport);
                         localStorage.setItem('hebestem_reports', JSON.stringify(state.reportHistory));
-                        alert(`[${dateTitle}] 보고서가 PC에 안전하게 저장되었습니다!`);
+                        alert(`[${dateTitle}] 보고서가 PC에 저장되었습니다!`);
                     } catch (e) {
-                        alert("저장 공간이 꽉 찼습니다! (이미지가 너무 많거나 큽니다.) 필요 없는 지난 보고서를 삭제해주세요.");
-                        state.reportHistory.shift(); // 롤백
+                        alert("저장 공간(용량)이 가득 찼습니다! 불필요한 지난 보고서를 지워주세요.");
+                        state.reportHistory.shift(); 
                     }
                 };
 
@@ -607,7 +620,7 @@
                     state.isThisWeekLoaded = report.isThisWeekLoaded;
                     state.isLastWeekLoaded = report.isLastWeekLoaded;
                     state.p_manualTotalRev = report.p_manualTotalRev || 0;
-                    state.adImages = report.adImages ? [...report.adImages] : []; // 이미지 복구
+                    state.adImages = report.adImages ? [...report.adImages] : []; 
                     
                     state.reportGenerated = false; 
                     state.chatMessages = [];
@@ -619,14 +632,12 @@
                     localStorage.setItem('hebestem_reports', JSON.stringify(state.reportHistory));
                 };
 
-                // 공유 기능: 용량 문제 해결을 위해 이미지 배열만 빼고 압축!
                 const shareReport = (report) => {
                     if(typeof LZString === 'undefined') {
                         alert("현재 환경에서 공유 기능을 지원하지 않습니다.");
                         return;
                     }
                     try {
-                        // URL 공유 시에는 엄청난 용량을 차지하는 이미지만 제외시킴 (안 그러면 URL 길이 제한 걸림)
                         const shareData = { ...report };
                         delete shareData.adImages; 
                         
@@ -636,7 +647,7 @@
                         const shareUrl = `${baseUrl}?shared=${compressed}`;
                         
                         navigator.clipboard.writeText(shareUrl).then(() => {
-                            alert(`[${report.title}] 공유 링크가 복사되었습니다!\n(※ 시스템 한계로 갤러리 이미지는 공유되지 않습니다.)`);
+                            alert(`[${report.title}] 공유 링크가 복사되었습니다!\n(※ 갤러리 이미지는 용량 초과 방지를 위해 공유되지 않습니다.)`);
                         }).catch(err => {
                             alert("클립보드 복사에 실패했습니다. 브라우저 권한을 확인해주세요.");
                         });
@@ -780,6 +791,22 @@
                                 listIdx++;
                             }
                         } catch (err) { alert("매출 엑셀 오류"); }
+                    };
+                    reader.readAsArrayBuffer(file);
+                };
+
+                const handleFile = (e, target) => {
+                    const file = e.target.files[0];
+                    if(!file) return;
+                    const isCurrent = target === 'current';
+                    
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                        try {
+                            const data = new Uint8Array(evt.target.result);
+                            const workbook = XLSX.read(data, { type: 'array' });
+                            parseData(XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 }), isCurrent);
+                        } catch (err) {}
                     };
                     reader.readAsArrayBuffer(file);
                 };
