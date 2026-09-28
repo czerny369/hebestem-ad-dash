@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>광고 퍼포먼스 분석 대시보드 (V20.1 Safe Mode)</title>
+    <title>광고 퍼포먼스 분석 대시보드 (V21.1 Link Fixed)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -30,7 +30,6 @@
 <body class="p-4 md:p-8">
     <div id="app" class="max-w-[1400px] mx-auto space-y-6">
         
-        <!-- 헤더 -->
         <header class="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <div class="flex items-center space-x-4">
                 <div class="bg-gray-900 text-white w-12 h-12 rounded-xl flex items-center justify-center font-black text-2xl tracking-tighter shadow-md">
@@ -42,13 +41,12 @@
                     </h1>
                 </div>
             </div>
-            <div class="px-5 py-2.5 bg-green-50 text-green-700 border border-green-200 rounded-lg font-bold text-sm flex items-center shadow-sm cursor-help" title="오류 방지 시스템이 가동 중입니다.">
-                <i class="fas fa-shield-alt mr-2"></i>V20.1 Safe Mode 가동 중
+            <div class="px-5 py-2.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg font-bold text-sm flex items-center shadow-sm">
+                <i class="fas fa-link mr-2"></i>V21.1 Share Link Fixed
             </div>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <!-- 왼쪽 패널 -->
             <div class="lg:col-span-3 flex flex-col space-y-4">
                 
                 <div class="bg-white p-5 rounded-2xl shadow-sm border" :class="isThisWeekLoaded ? 'border-blue-400 bg-blue-50/20' : 'border-gray-100'">
@@ -356,7 +354,6 @@
                         </table>
                     </div>
                     
-                    <!-- 강화된 이미지 갤러리 -->
                     <div class="p-6 bg-white border-t border-gray-100">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-sm font-bold text-gray-800"><i class="fas fa-images text-blue-500 mr-2"></i>광고 소재 갤러리 (레퍼런스 보드)</h3>
@@ -392,13 +389,10 @@
 
         createApp({
             setup() {
-                // 🚀 V20.1: 로컬 스토리지 데이터가 깨져있어도 사이트가 죽지 않도록 방어벽(try-catch) 설치
                 let safeHistory = [];
                 try {
                     let raw = localStorage.getItem('hebestem_reports');
-                    if (raw) {
-                        safeHistory = JSON.parse(raw);
-                    }
+                    if (raw) safeHistory = JSON.parse(raw);
                 } catch(err) {
                     console.warn("로컬 스토리지 데이터 손상 감지. 초기화 진행.");
                     localStorage.removeItem('hebestem_reports');
@@ -418,7 +412,7 @@
                     p_metrics: { spend: 0, impressions: 0, clicks: 0, landing: 0, atc: 0, purchase: 0, ctr: 0, cvr: 0, atcRate: 0 },
                     c_adData: [],
                     
-                    reportHistory: safeHistory, // 복구된 안전한 데이터 사용
+                    reportHistory: safeHistory, 
                     
                     chatInput: '',
                     chatMessages: [],
@@ -487,7 +481,6 @@
                     state.reportGenerated = true;
                 };
 
-                // 스마트 챗봇 로직
                 const sendChat = (presetText = null) => {
                     const msg = presetText || state.chatInput.trim();
                     if(!msg) return;
@@ -528,7 +521,6 @@
                     }, 1200);
                 };
 
-                // 🚀 V20.1: 이미지 업로드(초강력 압축 적용)
                 const handleImageUpload = (e) => {
                     const files = e.target.files;
                     if(!files) return;
@@ -547,7 +539,7 @@
                             const img = new Image();
                             img.onload = () => {
                                 const canvas = document.createElement('canvas');
-                                const MAX_WIDTH = 400; // 해상도 대폭 축소 (안전)
+                                const MAX_WIDTH = 400; 
                                 let scaleSize = 1;
                                 if(img.width > MAX_WIDTH) scaleSize = MAX_WIDTH / img.width;
                                 canvas.width = img.width * scaleSize;
@@ -556,7 +548,6 @@
                                 const ctx = canvas.getContext('2d');
                                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                                 
-                                // jpeg 품질 50%로 강력 압축하여 로컬 스토리지 에러 완벽 차단
                                 const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
                                 state.adImages.push(dataUrl);
                             }
@@ -632,6 +623,7 @@
                     localStorage.setItem('hebestem_reports', JSON.stringify(state.reportHistory));
                 };
 
+                // ★ V21.1 공유 주소 강제 고정 ★
                 const shareReport = (report) => {
                     if(typeof LZString === 'undefined') {
                         alert("현재 환경에서 공유 기능을 지원하지 않습니다.");
@@ -643,7 +635,9 @@
                         
                         const jsonStr = JSON.stringify(shareData);
                         const compressed = LZString.compressToEncodedURIComponent(jsonStr);
-                        const baseUrl = window.location.origin + window.location.pathname;
+                        
+                        // 현재 열려있는 주소(미리보기 주소 등)와 상관없이 항상 잠금 없는 정식 URL로 링크를 생성합니다.
+                        const baseUrl = 'https://hebestem-ad-dash.vercel.app/';
                         const shareUrl = `${baseUrl}?shared=${compressed}`;
                         
                         navigator.clipboard.writeText(shareUrl).then(() => {
@@ -674,7 +668,7 @@
                     let total = { spend: 0, impressions: 0, clicks: 0, landing: 0, atc: 0, purchase: 0 };
                     let adMap = {};
                     let hRow = -1;
-                    let idx = { start:-1, name:-1, spend:-1, imp:-1, click:-1, landing:-1, atc:-1, purchase:-1 };
+                    let idx = { start:-1, end:-1, name:-1, spend:-1, imp:-1, click:-1, landing:-1, atc:-1, purchase:-1 };
 
                     for (let i = 0; i < Math.min(data.length, 25); i++) {
                         if (!data[i]) continue;
@@ -683,6 +677,7 @@
                             hRow = i;
                             const h = data[i];
                             idx.start = h.findIndex(c => typeof c === 'string' && (c.includes('보고시작') || c === '보고 시작'));
+                            idx.end = h.findIndex(c => typeof c === 'string' && (c.includes('보고종료') || c === '보고 종료'));
                             idx.name = h.findIndex(c => typeof c === 'string' && (c.includes('광고 이름') || c.includes('광고이름')));
                             idx.spend = h.findIndex(c => typeof c === 'string' && (c.includes('지출') || c.includes('금액')));
                             idx.imp = h.findIndex(c => typeof c === 'string' && c.includes('노출'));
@@ -700,8 +695,13 @@
                     let allDates = new Set();
                     for (let i = hRow + 1; i < data.length; i++) {
                         if (!data[i] || !data[i].length) continue;
-                        if (getNum(data[i][idx.spend]) > 0 && idx.start !== -1 && data[i][idx.start]) {
-                            allDates.add(data[i][idx.start].toString().trim());
+                        if (idx.start !== -1 && data[i][idx.start]) {
+                            let dStr = data[i][idx.start].toString().trim();
+                            if(dStr.includes('-')) allDates.add(dStr);
+                        }
+                        if (idx.end !== -1 && data[i][idx.end]) {
+                            let dStr = data[i][idx.end].toString().trim();
+                            if(dStr.includes('-')) allDates.add(dStr);
                         }
                     }
                     
