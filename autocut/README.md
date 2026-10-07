@@ -37,7 +37,37 @@ pip install -r requirements.txt
 
 처음 실행할 때 Whisper 모델이 자동으로 다운로드됩니다 (`small` 약 500MB).
 
-## 사용법
+## 웹 화면으로 쓰기 (추천)
+
+React + Tailwind CSS 4 로 만든 화면에서 업로드 → 분석 → 미리보기/자막 수정 → CapCut 내보내기를 할 수 있습니다.
+
+필요한 것: 위 설치 + [Node.js](https://nodejs.org) 20 이상 (화면 빌드용, 최초 1회)
+
+```bash
+cd autocut/frontend
+npm install
+npm run build          # frontend/dist 생성 (최초 1회, 화면 코드 수정 시 다시)
+cd ..
+python -m autocut.server   # → 브라우저에서 http://127.0.0.1:8765 자동으로 열림
+```
+
+화면에서 할 수 있는 것:
+
+- 영상 끌어다 놓기 → 스크립트 붙여넣기(또는 .txt/.srt 불러오기) → **분석 시작**
+- **편집본 미리보기**: 잘린 구간을 건너뛰며 재생하고, 자막도 겹쳐서 보여 줍니다 (렌더링 없이 바로)
+- **타임라인**: 남긴 구간 / 잘린 구간 / 제거된 말(버벅임) 위치 표시, 클릭으로 이동
+- **자막 편집**: 문구·시간 수정, 합치기, 삭제
+- **자막 스타일**: 크기·위치·색·테두리·굵기 (미리보기 반영)
+- 컷 기준을 바꿔 **다시 분석** (음성 인식 결과는 저장돼서 빠름)
+- **CapCut 드래프트 만들기**, SRT 받기
+
+업로드한 영상은 `~/AutoCut/projects/` 에 보관됩니다 (환경변수 `AUTOCUT_HOME` 으로 변경 가능).
+CapCut 드래프트가 이 파일을 참조하므로 **CapCut 작업이 끝날 때까지 지우지 마세요.**
+
+> 화면 코드를 고치면서 개발할 때는 `python -m autocut.server --no-browser` 를 켜 둔 채
+> `cd frontend && npm run dev` 로 http://localhost:5173 에 접속하면 됩니다 (/api 는 자동 프록시).
+
+## 명령행으로 쓰기
 
 스크립트는 `.txt`(한 줄 = 자막 하나) 또는 `.srt`(텍스트만 사용, 시간은 다시 계산) 입니다.
 

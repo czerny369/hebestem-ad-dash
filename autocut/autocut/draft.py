@@ -62,12 +62,16 @@ def build_draft(video_path: str, plan: EditPlan, *, drafts_dir: str, draft_name:
                 style: SubtitleStyle = SubtitleStyle(),
                 allow_replace: bool = False) -> str:
     """편집 계획대로 CapCut 드래프트를 만들고 드래프트 폴더 경로를 반환한다."""
+    # 드래프트 폴더를 만들기 전에 소재부터 읽어서, 실패해도 빈 드래프트가 남지 않게 한다.
+    try:
+        material = cc.VideoMaterial(os.path.abspath(video_path))
+    except Exception as e:  # pymediainfo 가 길이를 못 읽는 컨테이너(webm 등)
+        raise ValueError(f"CapCut 소재로 읽을 수 없는 영상입니다 ({e}). MP4 또는 MOV 로 변환 후 다시 시도하세요.") from e
+
     folder = cc.DraftFolder(drafts_dir)
     script = folder.create_draft(draft_name, width, height, fps=int(round(fps)),
                                  allow_replace=allow_replace)
     script.add_track(cc.TrackType.video).add_track(cc.TrackType.text, "자막")
-
-    material = cc.VideoMaterial(os.path.abspath(video_path))
 
     # ---- 영상: 남길 구간을 순서대로 이어붙임 ----
     cursor = 0
@@ -113,8 +117,12 @@ def _srt_time(t: float) -> str:
     return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
 
 
-def write_srt(subs: List[Subtitle], path: str) -> None:
+def srt_text(subs: List[Subtitle]) -> str:
     lines = []
     for k, s in enumerate(subs, 1):
         lines += [str(k), f"{_srt_time(s.start)} --> {_srt_time(s.end)}", s.text, ""]
-    Path(path).write_text("\n".join(lines), encoding="utf-8")
+    return "\n".join(lines)
+
+
+def write_srt(subs: List[Subtitle], path: str) -> None:
+    Path(path).write_text(srt_text(subs), encoding="utf-8")

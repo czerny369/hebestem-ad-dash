@@ -1,7 +1,7 @@
 """자막 스크립트(.txt / .srt) 읽기 및 긴 문장 분할."""
 import re
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from .models import Subtitle
 
@@ -79,16 +79,11 @@ def _merge_short(parts: List[str], max_chars: int) -> List[str]:
     return out
 
 
-def load_script(path: str, max_chars: int = 0) -> List[Subtitle]:
-    """스크립트 파일을 읽어 자막 단위 리스트로 만든다.
-
-    - .txt: 빈 줄이 아닌 각 줄이 자막 한 개
-    - .srt: 각 자막 블록의 텍스트만 사용
-    - `max_chars` > 0 이면 긴 줄을 자동으로 나눈다.
-    """
-    p = Path(path)
-    text = _read_text(p)
-    if p.suffix.lower() == ".srt":
+def parse_script_text(text: str, max_chars: int = 0, is_srt: Optional[bool] = None) -> List[Subtitle]:
+    """스크립트 문자열을 자막 단위 리스트로 만든다. `is_srt` 가 None 이면 내용으로 판단."""
+    if is_srt is None:
+        is_srt = bool(_SRT_TIME.search(text))
+    if is_srt:
         lines = _lines_from_srt(text)
     else:
         lines = [l.strip() for l in text.splitlines() if l.strip()]
@@ -99,5 +94,20 @@ def load_script(path: str, max_chars: int = 0) -> List[Subtitle]:
         for chunk in split_long_line(line, max_chars):
             subs.append(Subtitle(text=chunk))
     if not subs:
-        raise ValueError(f"스크립트에 자막 내용이 없습니다: {path}")
+        raise ValueError("스크립트에 자막 내용이 없습니다")
     return subs
+
+
+def read_script_file(path: str) -> str:
+    return _read_text(Path(path))
+
+
+def load_script(path: str, max_chars: int = 0) -> List[Subtitle]:
+    """스크립트 파일을 읽어 자막 단위 리스트로 만든다.
+
+    - .txt: 빈 줄이 아닌 각 줄이 자막 한 개 (# 으로 시작하는 줄은 메모로 무시)
+    - .srt: 각 자막 블록의 텍스트만 사용
+    - `max_chars` > 0 이면 긴 줄을 자동으로 나눈다.
+    """
+    p = Path(path)
+    return parse_script_text(_read_text(p), max_chars, is_srt=p.suffix.lower() == ".srt")

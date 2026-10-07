@@ -11,7 +11,7 @@ from pathlib import Path
 
 from . import media
 from .draft import SubtitleStyle, build_draft, default_drafts_dir, hex_to_rgb, write_srt
-from .planner import CutOptions, plan_from_silence, plan_from_words
+from .pipeline import AnalyzeOptions, analyze
 from .script_parser import load_script
 
 
@@ -99,33 +99,18 @@ def main(argv=None) -> int:
     script = load_script(args.script, max_chars=args.max_chars)
     print(f"      스크립트: 자막 {len(script)}개")
 
-    opt = CutOptions(max_pause=args.max_pause, pause_keep=args.pause_keep,
-                     keep_threshold=args.keep_threshold)
-
-    if args.no_asr:
-        print("[2/4] 무음 구간 감지 중...")
-        silences = media.detect_silences(video, noise_db=args.silence_db,
-                                         min_silence=min(0.3, args.max_pause), duration=info.duration)
-        plan = plan_from_silence(silences, script, info.duration, opt)
+    opt = AnalyzeOptions(max_pause=args.max_pause, pause_keep=args.pause_keep,
+                         keep_threshold=args.keep_threshold, silence_db=args.silence_db,
+                         no_asr=args.no_asr, model=args.model, language=args.language, device=args.device)
+    if args.transcript:
+        transcript = args.transcript
     else:
-        from .transcribe import load_words, save_words, transcribe
-        if args.transcript:
-            words = load_words(args.transcript)
-            print(f"[2/4] 저장된 음성인식 결과 사용: 단어 {len(words)}개")
-        else:
-            print(f"[2/4] 음성 인식 중 (Whisper {args.model})... 영상 길이에 따라 수 분 걸릴 수 있습니다")
-            prompt = " ".join(s.text for s in script)[:200]
-            words = transcribe(video, model_size=args.model, language=args.language,
-                               device=args.device, initial_prompt=prompt)
-            cache = out_dir / f"{stem}.transcript.json"
-            save_words(words, str(cache))
-            print(f"      단어 {len(words)}개 인식 → {cache} (다음에 --transcript 로 재사용 가능)")
-        if not words:
-            print("      음성이 인식되지 않아 무음 감지 모드로 전환합니다.")
-            silences = media.detect_silences(video, noise_db=args.silence_db, duration=info.duration)
-            plan = plan_from_silence(silences, script, info.duration, opt)
-        else:
-            plan = plan_from_words(words, script, info.duration, opt)
+        transcript = str(out_dir / f"{stem}.transcript.json")
+        Path(transcript).unlink(missing_ok=True)  # 명시하지 않으면 항상 새로 인식
+    plan = analyze(video, script, opt, transcript_path=None if args.no_asr else transcript, info=info,
+                   progress=lambda msg: print(f"[2/4] {msg}..."))
+    if not args.no_asr and not args.transcript and os.path.exists(transcript):
+        print(f"      음성인식 결과 저장 → {transcript} (다음에 --transcript 로 재사용 가능)")
 
     cut = info.duration - plan.duration
     print(f"[3/4] 컷 편집: {info.duration:.1f}초 → {plan.duration:.1f}초 "

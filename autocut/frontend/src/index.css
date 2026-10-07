@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+    "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-ink-950: #0b0d12;
+  --color-ink-900: #11141b;
+  --color-ink-850: #161a23;
+  --color-ink-800: #1c212c;
+  --color-ink-700: #2a3040;
+  --color-ink-600: #3a4256;
+  --color-ink-400: #8a93a8;
+  --color-ink-300: #b4bccd;
+  --color-ink-100: #e7eaf1;
+
+  --color-keep: #10b981;
+  --color-cut: #f43f5e;
+  --color-accent: #34d399;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    @apply h-full;
+  }
+  body {
+    @apply bg-ink-950 text-ink-100 font-sans antialiased;
+  }
+  ::selection {
+    @apply bg-accent/30;
+  }
+}
+
+@utility card {
+  @apply rounded-2xl border border-ink-700/70 bg-ink-900/80 shadow-[0_1px_0_0_rgb(255_255_255/0.03)_inset];
+}
+
+@utility field {
+  @apply w-full rounded-lg border border-ink-700 bg-ink-850 px-3 py-2 text-sm text-ink-100 outline-none
+    transition placeholder:text-ink-400 focus:border-accent/70 focus:ring-2 focus:ring-accent/20;
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition
+    disabled:cursor-not-allowed disabled:opacity-40;
+}
+
+@utility btn-primary {
+  @apply btn bg-accent text-ink-950 hover:bg-emerald-300 active:bg-emerald-400;
+}
+
+@utility btn-ghost {
+  @apply btn border border-ink-700 bg-ink-850 text-ink-100 hover:border-ink-600 hover:bg-ink-800;
+}
+
+@utility cut-hatch {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgb(244 63 94 / 0.35) 0 4px,
+    rgb(244 63 94 / 0.12) 4px 8px
+  );
+}
+
+input[type="range"] {
+  @apply h-1.5 w-full cursor-pointer appearance-none rounded-full bg-ink-700 accent-accent;
+}
