@@ -39,17 +39,27 @@ pip install -r requirements.txt
 
 ## 웹 화면으로 쓰기 (추천)
 
-React + Tailwind CSS 4 로 만든 화면에서 업로드 → 분석 → 미리보기/자막 수정 → CapCut 내보내기를 할 수 있습니다.
+### 처음 한 번 준비
 
-필요한 것: 위 설치 + [Node.js](https://nodejs.org) 20 이상 (화면 빌드용, 최초 1회)
+1. **Python** 설치: https://www.python.org/downloads/
+   (Windows 는 설치 첫 화면에서 **"Add python.exe to PATH"** 체크)
+2. **FFmpeg** 설치
+   - Windows: 명령 프롬프트에서 `winget install --id Gyan.FFmpeg -e`
+   - Mac: 터미널에서 `brew install ffmpeg`
+3. 이 저장소를 내려받기: GitHub 에서 **Code → Download ZIP** 후 압축 풀기
 
-```bash
-cd autocut/frontend
-npm install
-npm run build          # frontend/dist 생성 (최초 1회, 화면 코드 수정 시 다시)
-cd ..
-python -m autocut.server   # → 브라우저에서 http://127.0.0.1:8765 자동으로 열림
-```
+### 실행
+
+`autocut` 폴더 안의 파일을 **더블클릭**하세요.
+
+- Windows: `start-windows.bat`
+- Mac: `start-mac.command` (처음에 "확인되지 않은 개발자" 경고가 뜨면 **우클릭 → 열기**)
+
+처음 실행할 때는 필요한 프로그램을 자동으로 설치하느라 몇 분 걸립니다.
+그다음부터는 바로 브라우저에 화면(http://127.0.0.1:8765)이 열립니다. 검은 창을 닫으면 종료됩니다.
+
+> 개발자용: `pip install -r requirements.txt && python -m autocut.server` 로도 실행됩니다.
+> 화면 코드를 수정했다면 `cd frontend && npm install && npm run build` 로 다시 빌드하세요.
 
 화면에서 할 수 있는 것:
 
