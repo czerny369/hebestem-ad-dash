@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { ZoomIn } from 'lucide-react'
-import { fmt, toOriginal } from '../timeline.js'
+import { PIECE_REASONS, fmt, toOriginal } from '../timeline.js'
 import { transitionLabel } from './TransitionPanel.jsx'
 
 function tickStep(duration, zoom) {
@@ -8,21 +8,10 @@ function tickStep(duration, zoom) {
   return [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300].find((s) => s >= target) ?? 600
 }
 
-export default function Timeline({ duration, plan, map, subtitles, time, onSeek, transitions = [], transitionCatalog, onToggleTransition }) {
+export default function Timeline({ duration, plan, map, subtitles, time, onSeek, onTogglePiece, transitions = [], transitionCatalog, onToggleTransition }) {
   const [zoom, setZoom] = useState(1)
   const trackRef = useRef(null)
   const pct = (t) => `${(t / duration) * 100}%`
-
-  const cuts = useMemo(() => {
-    const out = []
-    let cursor = 0
-    for (const [s, e] of plan.keep) {
-      if (s > cursor + 0.001) out.push([cursor, s])
-      cursor = e
-    }
-    if (cursor < duration - 0.001) out.push([cursor, duration])
-    return out
-  }, [plan.keep, duration])
 
   const subsOrig = useMemo(
     () => subtitles.map((s) => [toOriginal(map, s.start), toOriginal(map, s.end), s.text]),
@@ -42,9 +31,13 @@ export default function Timeline({ duration, plan, map, subtitles, time, onSeek,
   return (
     <div className="card p-4">
       <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-ink-300">
-        <h2 className="mr-auto text-sm font-semibold text-ink-100">타임라인 <span className="font-normal text-ink-400">(원본 기준)</span></h2>
+        <h2 className="mr-auto text-sm font-semibold text-ink-100">
+          타임라인 <span className="font-normal text-ink-400">(원본 기준 · 구간을 클릭하면 남김/잘림 전환)</span>
+        </h2>
         <span className="flex items-center gap-1.5"><i className="size-2.5 rounded-sm bg-keep" /> 남김</span>
         <span className="flex items-center gap-1.5"><i className="cut-hatch size-2.5 rounded-sm" /> 잘림</span>
+        {plan.pieces.some((p) => p.reason === 'ng') && <span className="flex items-center gap-1.5"><i className="ng-hatch size-2.5 rounded-sm" /> NG</span>}
+        {plan.pieces.some((p) => p.speed !== 1) && <span className="flex items-center gap-1.5"><i className="size-2.5 rounded-sm bg-violet-400/80" /> 빨리감기</span>}
         <span className="flex items-center gap-1.5"><i className="h-2.5 w-0.5 bg-rose-400" /> 제거된 말</span>
         <span className="flex items-center gap-1.5"><i className="size-2 rotate-45 bg-amber-300" /> 전환 효과</span>
         <label className="flex items-center gap-2">
@@ -94,25 +87,37 @@ export default function Timeline({ duration, plan, map, subtitles, time, onSeek,
             })}
           </div>
 
-          {/* 영상 레인 */}
+          {/* 영상 레인: 조각을 클릭하면 남김 ↔ 잘림 */}
           <div className="relative mt-1 h-10 overflow-hidden rounded-md bg-ink-850">
-            {plan.keep.map(([s, e], i) => (
-              <div
-                key={i}
-                className="absolute inset-y-0 border-x border-ink-950/60 bg-keep/80"
-                style={{ left: pct(s), width: pct(e - s) }}
-                title={`남김 ${fmt(s)} – ${fmt(e)}`}
-              />
-            ))}
-            {cuts.map(([s, e], i) => (
-              <div key={i} className="cut-hatch absolute inset-y-0" style={{ left: pct(s), width: pct(e - s) }} title={`잘림 ${(e - s).toFixed(1)}초`} />
-            ))}
+            {plan.pieces.map((p, i) => {
+              const fast = p.keep && p.speed !== 1
+              const why = PIECE_REASONS[p.reason] ?? ''
+              return (
+                <button
+                  key={i}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => { e.stopPropagation(); onTogglePiece?.(i) }}
+                  className={`group/piece absolute inset-y-0 border-x border-ink-950/60 transition hover:brightness-125
+                    ${p.keep ? (fast ? 'bg-violet-400/70' : 'bg-keep/80') : p.reason === 'ng' ? 'ng-hatch' : 'cut-hatch'}`}
+                  style={{ left: pct(p.start), width: pct(p.end - p.start) }}
+                  title={`${p.keep ? '남김' : '잘림'}${p.label ? ` · ${p.label}` : why ? ` · ${why}` : ''} (${fmt(p.start)} – ${fmt(p.end)})\n클릭해서 ${p.keep ? '자르기' : '되살리기'}`}
+                >
+                  {fast && (
+                    <span className="pointer-events-none absolute inset-0 grid place-items-center overflow-hidden text-[10px] font-semibold whitespace-nowrap text-white/95">
+                      {p.speed.toFixed(1)}x
+                    </span>
+                  )}
+                  {!p.keep && p.reason === 'ng' && (
+                    <span className="pointer-events-none absolute inset-0 grid place-items-center overflow-hidden text-[10px] font-bold text-orange-100">NG</span>
+                  )}
+                </button>
+              )
+            })}
             {plan.dropped_words?.map((w, i) => (
               <div
                 key={i}
-                className="absolute bottom-0 h-3 w-0.5 bg-rose-400"
+                className="pointer-events-none absolute bottom-0 h-3 w-0.5 bg-rose-400"
                 style={{ left: pct((w.start + w.end) / 2) }}
-                title={`제거: "${w.text}" (${fmt(w.start)})`}
               />
             ))}
           </div>

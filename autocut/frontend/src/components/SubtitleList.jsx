@@ -19,7 +19,7 @@ export default function SubtitleList({ subtitles, setSubtitles, map, time, onSee
   const mergeNext = (i) =>
     setSubtitles((list) => {
       if (i + 1 >= list.length) return list
-      const merged = { text: `${list[i].text} ${list[i + 1].text}`, start: list[i].start, end: list[i + 1].end }
+      const merged = { text: `${list[i].text} ${list[i + 1].text}`, start: list[i].start, end: list[i + 1].end, action: list[i].action || list[i + 1].action }
       return [...list.slice(0, i), merged, ...list.slice(i + 2)]
     })
 
@@ -74,11 +74,14 @@ export default function SubtitleList({ subtitles, setSubtitles, map, time, onSee
               <TimeInput value={s.end} onChange={(v) => setTime(i, 'end', v)} />
             </div>
 
-            <input
-              className="col-start-2 w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm outline-none hover:border-ink-700 focus:border-accent/60 focus:bg-ink-850 sm:col-start-auto"
-              value={s.text}
-              onChange={(e) => update(i, { text: e.target.value })}
-            />
+            <div className="col-start-2 min-w-0 sm:col-start-auto">
+              <input
+                className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm outline-none hover:border-ink-700 focus:border-accent/60 focus:bg-ink-850"
+                value={s.text}
+                onChange={(e) => update(i, { text: e.target.value })}
+              />
+              {s.action && <p className="truncate px-2 text-xs text-amber-300/80" title={s.action}>[{s.action}]</p>}
+            </div>
 
             <div className="col-start-2 flex gap-1 opacity-60 transition group-hover:opacity-100 sm:col-start-auto">
               <button className="rounded-md p-1.5 text-ink-300 hover:bg-ink-800 hover:text-ink-100" title="다음 자막과 합치기" onClick={() => mergeNext(i)} disabled={i === subtitles.length - 1}>

@@ -24,7 +24,7 @@ from pydantic import BaseModel, Field
 
 from . import media
 from .draft import SubtitleStyle, build_draft, default_drafts_dir, hex_to_rgb, srt_text
-from .models import EditPlan, Subtitle
+from .models import EditPlan, Piece, Subtitle, keep_from_pieces
 from .pipeline import AnalyzeOptions, analyze
 from .script_parser import parse_script_text
 from .transitions import TransitionSettings, catalog as transition_catalog, resolve as resolve_transitions
@@ -149,6 +149,10 @@ class AnalyzeRequest(BaseModel):
     model: str = "small"
     language: str = "ko"
     retranscribe: bool = False
+    mode: str = Field("auto", pattern="^(auto|voice|visual)$")
+    max_action: float = Field(6.0, ge=1, le=120)
+    long_mode: str = Field("speed", pattern="^(speed|trim)$")
+    remove_ng: bool = True
 
 
 @app.post("/api/projects/{pid}/analyze")
@@ -177,13 +181,15 @@ def start_analyze(pid: str, req: AnalyzeRequest):
             with _lock:
                 opt = AnalyzeOptions(max_pause=req.max_pause, pause_keep=req.pause_keep,
                                      keep_threshold=req.keep_threshold, no_asr=req.no_asr,
-                                     model=req.model, language=req.language)
+                                     model=req.model, language=req.language, mode=req.mode,
+                                     max_action=req.max_action, long_mode=req.long_mode,
+                                     remove_ng=req.remove_ng)
                 info = media.VideoInfo(**data["info"])
                 plan = analyze(data["video_path"], script, opt, transcript_path=str(transcript),
                                info=info, progress=progress)
             fresh = _load(pid)
             fresh["plan"] = plan.to_dict()
-            if not req.no_asr:
+            if plan.mode == "voice":
                 fresh["asr_model"] = req.model
             _save(pid, fresh)
             _status[pid] = {"state": "done", "step": "완료", "error": None}
@@ -220,6 +226,15 @@ class TransitionIn(BaseModel):
     overrides: Dict[int, str] = {}
 
 
+class PieceIn(BaseModel):
+    start: float
+    end: float
+    keep: bool
+    speed: float = Field(1.0, ge=0.1, le=100)
+    reason: str = ""
+    label: str = ""
+
+
 class DraftRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     drafts_dir: str
@@ -227,20 +242,29 @@ class DraftRequest(BaseModel):
     subtitles: List[SubtitleIn]
     style: StyleIn = StyleIn()
     transition: TransitionIn = TransitionIn()
+    pieces: Optional[List[PieceIn]] = None
+    """화면에서 남김/잘림을 바꾼 조각 목록 (없으면 분석 결과 그대로)"""
 
 
-def _plan_with(data: dict, subtitles: List[SubtitleIn]) -> EditPlan:
+def _plan_with(data: dict, subtitles: List[SubtitleIn], pieces: Optional[List[PieceIn]] = None) -> EditPlan:
     if not data.get("plan"):
         raise HTTPException(400, "먼저 분석을 실행하세요")
-    keep = [tuple(k) for k in data["plan"]["keep"]]
     subs = [Subtitle(s.text.strip(), s.start, s.end) for s in subtitles if s.text.strip()]
-    return EditPlan(keep=keep, subtitles=subs)
+    if pieces is not None:
+        duration = data["info"]["duration"]
+        ps = [Piece(max(0.0, p.start), min(duration, p.end), p.keep, p.speed, p.reason, p.label) for p in pieces]
+        keep, speeds = keep_from_pieces(ps)
+        if not keep:
+            raise HTTPException(400, "남길 구간이 하나도 없습니다")
+        return EditPlan(keep=keep, speeds=speeds, subtitles=subs, pieces=ps)
+    plan = data["plan"]
+    return EditPlan(keep=[tuple(k) for k in plan["keep"]], speeds=plan.get("speeds") or [], subtitles=subs)
 
 
 @app.post("/api/projects/{pid}/draft")
 def make_draft(pid: str, req: DraftRequest):
     data = _load(pid)
-    plan = _plan_with(data, req.subtitles)
+    plan = _plan_with(data, req.subtitles, req.pieces)
     if re.search(r'[\\/:*?"<>|]', req.name):
         raise HTTPException(400, '드래프트 이름에 \\ / : * ? " < > | 는 쓸 수 없습니다')
     if not req.drafts_dir or not os.path.isdir(req.drafts_dir):
@@ -260,7 +284,7 @@ def make_draft(pid: str, req: DraftRequest):
     for name in [tr.type, *tr.overrides.values()]:
         if name != "none" and name not in cc.TransitionType.__members__:
             raise HTTPException(400, f"알 수 없는 전환 효과: {name}")
-    transitions = resolve_transitions(plan.keep, TransitionSettings(**tr.model_dump()))
+    transitions = resolve_transitions(plan.keep, TransitionSettings(**tr.model_dump()), plan.speed_list())
     try:
         path = build_draft(data["video_path"], plan, drafts_dir=req.drafts_dir, draft_name=req.name,
                            width=info.width, height=info.height, fps=info.fps,
@@ -276,6 +300,11 @@ def make_draft(pid: str, req: DraftRequest):
     data["draft"] = {"name": req.name, "path": path, "transitions": sum(1 for t in transitions if t)}
     data["transition"] = tr.model_dump()
     data["plan"]["subtitles"] = [asdict(s) for s in plan.subtitles]
+    if req.pieces is not None:
+        data["plan"]["pieces"] = [asdict(p) for p in plan.pieces]
+        data["plan"]["keep"] = [list(k) for k in plan.keep]
+        data["plan"]["speeds"] = plan.speed_list()
+        data["plan"]["duration"] = plan.duration
     _save(pid, data)
     return {"path": path}
 

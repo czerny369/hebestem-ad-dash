@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import List, Optional, Sequence, Tuple
 
 from .align import align_script_to_words
-from .models import EditPlan, Subtitle, Word
+from .models import EditPlan, Subtitle, Word, pieces_from_keep
 
 Interval = Tuple[float, float]
 
@@ -47,14 +47,15 @@ def merge_intervals(intervals: Sequence[Interval], min_gap: float = 0.0) -> List
 class TimelineMap:
     """원본 시간 → 편집본 시간 변환. 잘린 구간 안의 시간은 다음 유지 구간 시작으로 붙는다."""
 
-    def __init__(self, keep: Sequence[Interval]):
+    def __init__(self, keep: Sequence[Interval], speeds: Optional[Sequence[float]] = None):
         self.keep = list(keep)
+        self.speeds = list(speeds) if speeds and len(speeds) == len(self.keep) else [1.0] * len(self.keep)
         self.starts = [s for s, _ in self.keep]
         self.offsets = []
         acc = 0.0
-        for s, e in self.keep:
+        for (s, e), sp in zip(self.keep, self.speeds):
             self.offsets.append(acc)
-            acc += e - s
+            acc += (e - s) / sp
         self.total = acc
 
     def __call__(self, t: float) -> float:
@@ -64,10 +65,8 @@ class TimelineMap:
         if k < 0:
             return 0.0
         s, e = self.keep[k]
-        if t <= e:
-            return self.offsets[k] + (t - s)
-        # 잘린 구간 → 다음 구간 시작
-        return self.offsets[k] + (e - s)
+        # 잘린 구간이면 다음 구간 시작으로
+        return self.offsets[k] + (min(t, e) - s) / self.speeds[k]
 
 
 # --------------------------------------------------------------------------- #
@@ -193,9 +192,9 @@ def plan_from_words(words: Sequence[Word], script: Sequence[Subtitle], duration:
         if ws:
             s = min(words[w].start for w in ws)
             e = max(words[w].end for w in ws)
-            subs.append(Subtitle(unit.text, tmap(s), tmap(e)))
+            subs.append(Subtitle(unit.text, tmap(s), tmap(e), unit.action))
         else:
-            subs.append(Subtitle(unit.text))
+            subs.append(Subtitle(unit.text, action=unit.action))
     if all(s.start is None for s in subs):
         subs = distribute_evenly(script, [(0.0, tmap.total)])
     else:
@@ -203,7 +202,12 @@ def plan_from_words(words: Sequence[Word], script: Sequence[Subtitle], duration:
     subs = finalize_subtitles(subs, tmap.total, opt)
 
     dropped = [w for w, k in zip(words, result.word_kept) if not k]
-    return EditPlan(keep=keep, subtitles=subs, dropped_words=dropped)
+
+    def reason(s: float, e: float) -> str:
+        return "stutter" if any(s <= (w.start + w.end) / 2 <= e for w in dropped) else "pause"
+
+    return EditPlan(keep=keep, subtitles=subs, dropped_words=dropped, mode="voice",
+                    pieces=pieces_from_keep(keep, duration, reason))
 
 
 # --------------------------------------------------------------------------- #
@@ -226,7 +230,7 @@ def distribute_evenly(script: Sequence[Subtitle], speech: Sequence[Interval]) ->
     out, pos = [], 0.0
     for sub, w in zip(script, weights):
         d = total_speech * w / wsum
-        out.append(Subtitle(sub.text, at(pos), at(pos + d)))
+        out.append(Subtitle(sub.text, at(pos), at(pos + d), sub.action))
         pos += d
     return out
 
@@ -263,4 +267,5 @@ def plan_from_silence(silences: Sequence[Interval], script: Sequence[Subtitle], 
             speech_orig.append((t, ke))
     speech = [(tmap(s), tmap(e)) for s, e in speech_orig if e - s > 0.05] or [(0.0, tmap.total)]
     subs = finalize_subtitles(distribute_evenly(script, speech), tmap.total, opt)
-    return EditPlan(keep=keep, subtitles=subs)
+    return EditPlan(keep=keep, subtitles=subs, mode="silence",
+                    pieces=pieces_from_keep(keep, duration, lambda s, e: "pause"))

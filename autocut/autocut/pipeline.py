@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Callable, List, Optional
 
 from . import media
-from .models import EditPlan, Subtitle
+from .models import EditPlan, Subtitle  # noqa: F401
 from .planner import CutOptions, plan_from_silence, plan_from_words
 
 Progress = Callable[[str], None]
@@ -21,6 +21,11 @@ class AnalyzeOptions:
     model: str = "small"
     language: str = "ko"
     device: str = "auto"
+    mode: str = "auto"
+    """auto = 소리가 있으면 음성 기준, 없으면 화면 기준 / voice / visual"""
+    max_action: float = 6.0
+    long_mode: str = "speed"
+    remove_ng: bool = True
     extra: dict = field(default_factory=dict)
 
     def cut_options(self) -> CutOptions:
@@ -37,6 +42,18 @@ def analyze(video: str, script: List[Subtitle], opt: AnalyzeOptions, *,
     """
     info = info or media.probe(video)
     cut = opt.cut_options()
+
+    mode = opt.mode
+    if mode == "auto":
+        progress("오디오 확인 중")
+        mode = "voice" if media.has_meaningful_audio(video) else "visual"
+    if mode == "visual":
+        from .visual import VisualOptions, plan_from_visual
+        vopt = VisualOptions(max_action=opt.max_action, long_mode=opt.long_mode, remove_ng=opt.remove_ng)
+        plan = plan_from_visual(video, script, info.duration, vopt, cut, progress=progress)
+        if opt.mode == "auto":
+            plan.notes.insert(0, "영상에 음성이 없어 화면 기준으로 편집했습니다")
+        return plan
 
     def by_silence() -> EditPlan:
         progress("무음 구간 감지 중")

@@ -35,6 +35,14 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--no-asr", action="store_true",
                    help="음성인식 없이 무음 감지만으로 편집 (버벅임 제거 불가, 자막은 글자 수 비율 배치)")
 
+    v = p.add_argument_group("화면 기준 편집 (음성 없는 영상)")
+    v.add_argument("--mode", choices=["auto", "voice", "visual"], default="auto",
+                   help="auto: 소리가 있으면 음성 기준, 없으면 화면 기준 (기본) / voice / visual")
+    v.add_argument("--max-action", type=float, default=6.0, help="이보다 긴 장면은 줄임, 초 (기본 6)")
+    v.add_argument("--long-action", choices=["speed", "trim"], default="speed",
+                   help="긴 장면 처리: speed=빨리감기(기본), trim=중간 자르기")
+    v.add_argument("--keep-ng", action="store_true", help="NG(다시 찍은 동작) 자동 제거 끄기")
+
     c = p.add_argument_group("컷 편집")
     c.add_argument("--max-pause", type=float, default=0.6,
                    help="이보다 긴 공백(멈춤/긴 동작)은 잘라냄, 초 (기본 0.6)")
@@ -72,21 +80,38 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
-def render_preview(video: str, keep, out_path: str) -> None:
-    """남길 구간만 이어붙인 미리보기 mp4 (자막 미포함)."""
+def _atempo(speed: float) -> str:
+    """atempo 는 0.5~2.0 만 지원하므로 여러 번 이어붙인다."""
+    parts = []
+    while speed > 2.0:
+        parts.append("atempo=2.0")
+        speed /= 2.0
+    while speed < 0.5:
+        parts.append("atempo=0.5")
+        speed /= 0.5
+    parts.append(f"atempo={speed:.4f}")
+    return ",".join(parts)
+
+
+def render_preview(video: str, keep, out_path: str, speeds=None) -> None:
+    """남길 구간만 이어붙인 미리보기 mp4 (자막 미포함). 배속 반영, 오디오 없는 영상도 지원."""
+    speeds = speeds or [1.0] * len(keep)
+    audio = media.audio_level(video) is not None
     parts, labels = [], []
-    for k, (s, e) in enumerate(keep):
-        parts.append(f"[0:v]trim=start={s:.3f}:end={e:.3f},setpts=PTS-STARTPTS[v{k}];"
-                     f"[0:a]atrim=start={s:.3f}:end={e:.3f},asetpts=PTS-STARTPTS[a{k}];")
-        labels.append(f"[v{k}][a{k}]")
-    graph = "".join(parts) + "".join(labels) + f"concat=n={len(keep)}:v=1:a=1[v][a]"
+    for k, ((s, e), sp) in enumerate(zip(keep, speeds)):
+        parts.append(f"[0:v]trim=start={s:.3f}:end={e:.3f},setpts=(PTS-STARTPTS)/{sp:.4f}[v{k}];")
+        labels.append(f"[v{k}]")
+        if audio:
+            parts.append(f"[0:a]atrim=start={s:.3f}:end={e:.3f},asetpts=PTS-STARTPTS,{_atempo(sp)}[a{k}];")
+            labels.append(f"[a{k}]")
+    graph = "".join(parts) + "".join(labels) + f"concat=n={len(keep)}:v=1:a={1 if audio else 0}[v]" + ("[a]" if audio else "")
     script = Path(out_path).with_suffix(".filter.txt")
     script.write_text(graph, encoding="utf-8")
+    maps = ["-map", "[v]"] + (["-map", "[a]", "-c:a", "aac"] if audio else [])
     try:
         subprocess.run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", video,
-                        "-filter_complex_script", str(script), "-map", "[v]", "-map", "[a]",
-                        "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-c:a", "aac",
-                        out_path], check=True)
+                        "-filter_complex_script", str(script), *maps,
+                        "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", out_path], check=True)
     finally:
         script.unlink(missing_ok=True)
 
@@ -122,7 +147,9 @@ def main(argv=None) -> int:
 
     opt = AnalyzeOptions(max_pause=args.max_pause, pause_keep=args.pause_keep,
                          keep_threshold=args.keep_threshold, silence_db=args.silence_db,
-                         no_asr=args.no_asr, model=args.model, language=args.language, device=args.device)
+                         no_asr=args.no_asr, model=args.model, language=args.language, device=args.device,
+                         mode=args.mode, max_action=args.max_action, long_mode=args.long_action,
+                         remove_ng=not args.keep_ng)
     if args.transcript:
         transcript = args.transcript
     else:
@@ -133,6 +160,8 @@ def main(argv=None) -> int:
     if not args.no_asr and not args.transcript and os.path.exists(transcript):
         print(f"      음성인식 결과 저장 → {transcript} (다음에 --transcript 로 재사용 가능)")
 
+    for note in plan.notes:
+        print(f"      ※ {note}")
     cut = info.duration - plan.duration
     print(f"[3/4] 컷 편집: {info.duration:.1f}초 → {plan.duration:.1f}초 "
           f"({cut:.1f}초 제거, 구간 {len(plan.keep)}개)")
@@ -148,7 +177,7 @@ def main(argv=None) -> int:
     print(f"      자막 {len(plan.subtitles)}개 → {srt_path}")
 
     if args.preview:
-        render_preview(video, plan.keep, args.preview)
+        render_preview(video, plan.keep, args.preview, plan.speed_list())
         print(f"      미리보기 영상 → {args.preview}")
 
     if args.dry_run:
@@ -172,7 +201,8 @@ def main(argv=None) -> int:
         from .transitions import TransitionSettings, resolve
         transitions = resolve(plan.keep, TransitionSettings(
             enabled=True, type=args.transition, duration=args.transition_duration,
-            apply="all" if args.transition_all else "long_cuts", min_cut=args.transition_min_cut))
+            apply="all" if args.transition_all else "long_cuts", min_cut=args.transition_min_cut),
+            plan.speed_list())
         print(f"      전환 효과 {args.transition}: {sum(1 for t in transitions if t)}곳")
     path = build_draft(video, plan, drafts_dir=drafts_dir, draft_name=name,
                        width=info.width, height=info.height, fps=info.fps,

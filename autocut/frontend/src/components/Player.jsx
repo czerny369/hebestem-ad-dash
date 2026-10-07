@@ -1,6 +1,6 @@
 import { useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { Pause, Play, RotateCcw, Scissors } from 'lucide-react'
-import { fmt, nextKeepStart, toEdited, toOriginal } from '../timeline.js'
+import { fmt, keepIndexAt, nextKeepStart, toEdited, toOriginal } from '../timeline.js'
 import { transitionLabel } from './TransitionPanel.jsx'
 
 // 미리보기용 대략적인 모양: 밝게 번쩍 / 어둡게 번쩍 / 살짝 어두워짐
@@ -82,6 +82,10 @@ export default function Player({ ref, src, info, plan, map, subtitles, style, ve
           now = next
         }
       }
+      // 빨리감기 구간은 재생 속도를 올린다
+      const k = editedMode ? keepIndexAt(plan.keep, now) : -1
+      const rate = k >= 0 ? plan.speeds?.[k] ?? 1 : 1
+      if (Math.abs(v.playbackRate - rate) > 1e-3) v.playbackRate = Math.min(16, rate)
       // 화면 갱신은 초당 ~20회로 제한
       if (Math.abs(now - last) >= 0.05) {
         last = now

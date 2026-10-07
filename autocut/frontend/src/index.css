@@ -79,3 +79,11 @@ input[type="range"] {
   15%, 75% { opacity: 1; transform: none; }
   100% { opacity: 0; }
 }
+
+@utility ng-hatch {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgb(251 146 60 / 0.55) 0 4px,
+    rgb(251 146 60 / 0.2) 4px 8px
+  );
+}

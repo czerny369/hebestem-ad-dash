@@ -79,8 +79,16 @@ def _merge_short(parts: List[str], max_chars: int) -> List[str]:
     return out
 
 
+_ACTION_LINE = re.compile(r"^[\[［【(（]\s*(.+?)\s*[\]］】)）]$")
+_ACTION_INLINE = re.compile(r"^(.*?)\s*[\[［【]\s*(.+?)\s*[\]］】]\s*$")
+
+
 def parse_script_text(text: str, max_chars: int = 0, is_srt: Optional[bool] = None) -> List[Subtitle]:
-    """스크립트 문자열을 자막 단위 리스트로 만든다. `is_srt` 가 None 이면 내용으로 판단."""
+    """스크립트 문자열을 자막 단위 리스트로 만든다. `is_srt` 가 None 이면 내용으로 판단.
+
+    대괄호 줄 `[동작 설명]` 은 자막이 아니라 바로 위 자막의 동작 설명으로 붙는다.
+    `자막 [동작]` 처럼 한 줄에 같이 써도 된다.
+    """
     if is_srt is None:
         is_srt = bool(_SRT_TIME.search(text))
     if is_srt:
@@ -89,10 +97,28 @@ def parse_script_text(text: str, max_chars: int = 0, is_srt: Optional[bool] = No
         lines = [l.strip() for l in text.splitlines() if l.strip()]
         lines = [l for l in lines if not l.startswith("#")]
 
-    subs: List[Subtitle] = []
+    entries: List[List] = []        # [자막 텍스트, [동작들]]
+    pending: List[str] = []          # 첫 자막보다 먼저 나온 동작
     for line in lines:
-        for chunk in split_long_line(line, max_chars):
-            subs.append(Subtitle(text=chunk))
+        m = _ACTION_LINE.match(line)
+        if m:
+            (entries[-1][1] if entries else pending).append(m.group(1))
+            continue
+        m = _ACTION_INLINE.match(line)
+        if m and m.group(1):
+            entries.append([m.group(1).strip(), [m.group(2)]])
+        else:
+            entries.append([line, []])
+        if pending:
+            entries[-1][1][:0] = pending
+            pending = []
+
+    subs: List[Subtitle] = []
+    for line, actions in entries:
+        action = " / ".join(actions) or None
+        for k, chunk in enumerate(split_long_line(line, max_chars)):
+            # 긴 자막이 나뉘면 동작 설명은 첫 조각에만 (나머지는 그 장면 시간을 나눠 가짐)
+            subs.append(Subtitle(text=chunk, action=action if k == 0 else None))
     if not subs:
         raise ValueError("스크립트에 자막 내용이 없습니다")
     return subs

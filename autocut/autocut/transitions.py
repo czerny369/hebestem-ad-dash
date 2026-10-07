@@ -78,12 +78,14 @@ class TransitionSettings:
     """컷 번호(0부터, keep[i] 와 keep[i+1] 사이) → 효과 이름 또는 'none'"""
 
 
-def resolve(keep: Sequence[Tuple[float, float]],
-            settings: TransitionSettings) -> List[Optional[Tuple[str, float]]]:
+def resolve(keep: Sequence[Tuple[float, float]], settings: TransitionSettings,
+            speeds: Optional[Sequence[float]] = None) -> List[Optional[Tuple[str, float]]]:
     """각 컷 경계(len(keep)-1 개)에 넣을 (효과, 길이초) 또는 None.
 
     전환 길이는 앞뒤 조각 중 짧은 쪽의 절반을 넘지 않게 줄인다 (CapCut 은 조각보다 긴 전환을 허용하지 않음).
     """
+    speeds = list(speeds) if speeds and len(speeds) == len(keep) else [1.0] * len(keep)
+    lengths = [(e - s) / sp for (s, e), sp in zip(keep, speeds)]  # 편집본에서의 길이
     out: List[Optional[Tuple[str, float]]] = []
     for i in range(len(keep) - 1):
         override = settings.overrides.get(i)
@@ -101,7 +103,7 @@ def resolve(keep: Sequence[Tuple[float, float]],
                 out.append(None)
                 continue
             kind = settings.type
-        limit = min(keep[i][1] - keep[i][0], keep[i + 1][1] - keep[i + 1][0]) / 2
+        limit = min(lengths[i], lengths[i + 1]) / 2
         duration = min(settings.duration, limit)
         out.append((kind, duration) if duration >= MIN_DURATION else None)
     return out

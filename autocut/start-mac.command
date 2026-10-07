@@ -21,10 +21,12 @@ if [ ! -x .venv/bin/python ]; then
   echo "[준비] 처음 실행이라 필요한 프로그램을 설치합니다. 몇 분 걸릴 수 있어요..."
   python3 -m venv .venv || { read -r -p "설치 실패. 엔터를 누르면 닫힙니다"; exit 1; }
 fi
-if [ ! -f .venv/installed.txt ]; then
+# requirements.txt 가 바뀌었으면(업데이트) 다시 설치
+if ! cmp -s requirements.txt .venv/installed-requirements.txt; then
+  echo "[준비] 필요한 프로그램을 설치/업데이트합니다. 처음엔 AI 모델 패키지 때문에 10분 이상 걸릴 수 있어요..."
   .venv/bin/python -m pip install --upgrade pip >/dev/null
   .venv/bin/python -m pip install -r requirements.txt || { read -r -p "설치 실패. 엔터를 누르면 닫힙니다"; exit 1; }
-  echo ok > .venv/installed.txt
+  cp requirements.txt .venv/installed-requirements.txt
 fi
 
 echo

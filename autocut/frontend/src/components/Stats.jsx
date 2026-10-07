@@ -6,7 +6,7 @@ export default function Stats({ info, plan, subtitles }) {
   const items = [
     ['원본', fmt(info.duration)],
     ['편집본', fmt(plan.duration), 'text-accent'],
-    ['잘라낸 시간', `${removed.toFixed(1)}초 (${pct}%)`, 'text-rose-300'],
+    ['줄어든 시간', `${removed.toFixed(1)}초 (${pct}%)`, 'text-rose-300'],
     ['컷 / 자막', `${Math.max(0, plan.keep.length - 1)}곳 / ${subtitles.length}개`],
   ]
   return (

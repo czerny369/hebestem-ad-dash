@@ -34,11 +34,14 @@ if not exist ".venv\Scripts\python.exe" (
   if errorlevel 1 goto :fail
 )
 
-if not exist ".venv\installed.txt" (
+rem requirements.txt 가 바뀌었으면(업데이트) 다시 설치
+fc /b requirements.txt ".venv\installed-requirements.txt" >nul 2>nul
+if errorlevel 1 (
+  echo [준비] 필요한 프로그램을 설치/업데이트합니다. 처음엔 AI 모델 패키지 때문에 10분 이상 걸릴 수 있어요...
   ".venv\Scripts\python.exe" -m pip install --upgrade pip >nul
   ".venv\Scripts\python.exe" -m pip install -r requirements.txt
   if errorlevel 1 goto :fail
-  echo ok> ".venv\installed.txt"
+  copy /y requirements.txt ".venv\installed-requirements.txt" >nul
 )
 
 echo.

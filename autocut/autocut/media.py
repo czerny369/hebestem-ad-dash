@@ -4,7 +4,7 @@ import re
 import shutil
 import subprocess
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 
 @dataclass
@@ -76,3 +76,26 @@ def detect_silences(video_path: str, noise_db: float = -35.0, min_silence: float
     if start is not None and duration:
         silences.append((start, duration))
     return silences
+
+
+_MAX_VOL = re.compile(r"max_volume:\s*(-?[\d.]+|-inf) dB")
+
+
+def audio_level(video_path: str) -> Optional[float]:
+    """오디오 최대 음량(dB). 오디오 트랙이 없으면 None."""
+    out = subprocess.run([_require("ffprobe"), "-v", "error", "-select_streams", "a",
+                          "-show_entries", "stream=index", "-of", "csv=p=0", video_path],
+                         capture_output=True, text=True).stdout.strip()
+    if not out:
+        return None
+    proc = subprocess.run([_require("ffmpeg"), "-hide_banner", "-nostats", "-i", video_path, "-vn",
+                           "-af", "volumedetect", "-f", "null", "-"], capture_output=True, text=True)
+    m = _MAX_VOL.search(proc.stderr)
+    if not m:
+        return None
+    return -200.0 if m.group(1) == "-inf" else float(m.group(1))
+
+
+def has_meaningful_audio(video_path: str, threshold_db: float = -45.0) -> bool:
+    level = audio_level(video_path)
+    return level is not None and level > threshold_db

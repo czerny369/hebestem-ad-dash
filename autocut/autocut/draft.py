@@ -82,19 +82,22 @@ def build_draft(video_path: str, plan: EditPlan, *, drafts_dir: str, draft_name:
 
     # ---- 영상: 남길 구간을 순서대로 이어붙임 ----
     cursor = 0
+    speeds = plan.speed_list()
     for i, (s, e) in enumerate(plan.keep):
         src_start = _to_frames(s, fps)
         src_end = min(_to_frames(e, fps), material.duration)
         dur = src_end - src_start
         if dur <= 0:
             continue
-        seg = cc.VideoSegment(material, cc.trange(cursor, dur),
-                              source_timerange=cc.trange(src_start, dur))
+        speed = speeds[i]
+        seg = cc.VideoSegment(material, cc.trange(cursor, int(round(dur / speed))),
+                              source_timerange=cc.trange(src_start, dur),
+                              speed=None if abs(speed - 1.0) < 1e-6 else speed)
         # 전환은 '앞' 조각에 붙인다
         if i < len(transition_types) and transition_types[i] is not None and i + 1 < len(plan.keep):
             seg.add_transition(transition_types[i], duration=int(transitions[i][1] * SEC))
         script.add_segment(seg)
-        cursor += dur
+        cursor += seg.target_timerange.duration
     total = cursor
 
     # ---- 자막 ----

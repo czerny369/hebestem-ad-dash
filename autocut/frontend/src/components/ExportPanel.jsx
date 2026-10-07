@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { CheckCircle2, Download, Loader2, Send } from 'lucide-react'
 import { api } from '../api.js'
 
-export default function ExportPanel({ project, config, subtitles, style, transition, transitionCount, onError, onDone }) {
+export default function ExportPanel({ project, config, subtitles, style, transition, transitionCount, pieces, onError, onDone }) {
   const stem = project.video_name.replace(/\.[^.]+$/, '')
   const [name, setName] = useState(project.draft?.name ?? `${stem}_autocut`)
   const [dir, setDir] = useState('')
@@ -21,7 +21,7 @@ export default function ExportPanel({ project, config, subtitles, style, transit
     setResult(null)
     onError(null)
     try {
-      const res = await api.draft(project.id, { name: name.trim(), drafts_dir: dir.trim(), replace, subtitles, style: { ...style, font: style.font || null }, transition })
+      const res = await api.draft(project.id, { name: name.trim(), drafts_dir: dir.trim(), replace, subtitles, style: { ...style, font: style.font || null }, transition, pieces })
       try { localStorage.setItem('autocut.draftsDir', dir.trim()) } catch { /* noop */ }
       setResult(res.path)
       setReplace(true)

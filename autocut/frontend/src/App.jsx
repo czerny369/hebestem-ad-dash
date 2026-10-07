@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from './api.js'
-import { buildMap, resolveTransitions, toggleTransitionAt } from './timeline.js'
+import { buildMap, piecesToKeep, resolveTransitions, toEdited, toggleTransitionAt, toOriginal } from './timeline.js'
 import Header from './components/Header.jsx'
 import UploadScreen from './components/UploadScreen.jsx'
 import ScriptPanel from './components/ScriptPanel.jsx'
@@ -13,6 +13,10 @@ import Stats from './components/Stats.jsx'
 import TransitionPanel from './components/TransitionPanel.jsx'
 
 const DEFAULT_OPTIONS = {
+  mode: 'auto',
+  max_action: 6,
+  long_mode: 'speed',
+  remove_ng: true,
   max_chars: 18,
   max_pause: 0.6,
   pause_keep: 0.3,
@@ -40,6 +44,20 @@ const DEFAULT_STYLE = {
   font: '',
 }
 
+/** 예전 분석 결과(조각 정보 없음)용: keep 으로 조각 만들기 */
+function piecesOf(plan, duration) {
+  if (plan.pieces?.length) return plan.pieces
+  const out = []
+  let cursor = 0
+  plan.keep.forEach(([s, e], i) => {
+    if (s - cursor > 1e-3) out.push({ start: cursor, end: s, keep: false, speed: 1, reason: 'cut', label: '' })
+    out.push({ start: s, end: e, keep: true, speed: plan.speeds?.[i] ?? 1, reason: '', label: '' })
+    cursor = e
+  })
+  if (duration - cursor > 1e-3) out.push({ start: cursor, end: duration, keep: false, speed: 1, reason: 'cut', label: '' })
+  return out
+}
+
 function projectIdFromHash() {
   const m = window.location.hash.match(/^#\/p\/([0-9a-f]{12})$/)
   return m ? m[1] : null
@@ -55,6 +73,7 @@ export default function App() {
   const [transition, setTransition] = useState(DEFAULT_TRANSITION)
   const [transitionCatalog, setTransitionCatalog] = useState(null)
   const [subtitles, setSubtitles] = useState([])
+  const [pieces, setPieces] = useState([]) // 사용자가 남김/잘림을 바꿀 수 있는 조각들
   const [time, setTime] = useState(0) // 원본 기준 재생 위치
   const playerRef = useRef(null)
 
@@ -81,6 +100,7 @@ export default function App() {
       setScriptText(p.script_text || '')
       if (p.options) setOptions((o) => ({ ...o, ...p.options }))
       setSubtitles(p.plan?.subtitles ?? [])
+      setPieces(p.plan ? piecesOf(p.plan, p.info.duration) : [])
       setTransition({ ...DEFAULT_TRANSITION, ...(p.transition ?? {}) })
       setTime(0)
     } catch (e) {
@@ -113,6 +133,7 @@ export default function App() {
         setProject(p)
         if (p.status.state === 'done') {
           setSubtitles(p.plan?.subtitles ?? [])
+          setPieces(p.plan ? piecesOf(p.plan, p.info.duration) : [])
           // 컷 위치가 바뀌었으니 컷별 개별 설정은 초기화
           setTransition((t) => ({ ...t, overrides: {} }))
         }
@@ -133,8 +154,33 @@ export default function App() {
     }
   }
 
-  const map = useMemo(() => (plan ? buildMap(plan.keep) : null), [plan])
-  const resolvedTransitions = useMemo(() => (plan ? resolveTransitions(plan.keep, transition) : []), [plan, transition])
+  // 화면에서 바꾼 조각을 반영한 실제 편집 계획
+  const edited = useMemo(() => {
+    if (!plan) return null
+    const { keep, speeds } = piecesToKeep(pieces)
+    const map = buildMap(keep, speeds)
+    return { ...plan, keep, speeds, duration: map.total, pieces, map }
+  }, [plan, pieces])
+  const map = edited?.map ?? null
+  const resolvedTransitions = useMemo(
+    () => (edited ? resolveTransitions(edited.keep, transition, edited.speeds) : []),
+    [edited, transition],
+  )
+
+  /** 조각 i 의 남김/잘림 전환. 자막은 원본 시간 기준 위치를 유지하도록 다시 계산 */
+  const togglePiece = (i) => {
+    const next = pieces.map((p, k) => (k === i ? { ...p, keep: !p.keep } : p))
+    const { keep, speeds } = piecesToKeep(next)
+    if (!keep.length) return setError('모든 구간을 자를 수는 없어요')
+    const newMap = buildMap(keep, speeds)
+    setSubtitles((subs) => subs.map((s) => ({
+      ...s,
+      start: toEdited(newMap, toOriginal(map, s.start)),
+      end: toEdited(newMap, toOriginal(map, s.end)),
+    })))
+    setPieces(next)
+    setTransition((t) => ({ ...t, overrides: {} }))
+  }
   const info = project?.info
   const vertical = info ? info.height > info.width : false
 
@@ -172,7 +218,7 @@ export default function App() {
             ref={playerRef}
             src={api.videoUrl(pid)}
             info={info}
-            plan={plan}
+            plan={edited}
             map={map}
             subtitles={subtitles}
             style={style}
@@ -181,19 +227,25 @@ export default function App() {
             vertical={vertical}
             onTime={setTime}
           />
-          {plan && map ? (
+          {edited && map ? (
             <>
-              <Stats info={info} plan={plan} subtitles={subtitles} />
+              {plan.notes?.length > 0 && (
+                <ul className="space-y-1 rounded-xl border border-sky-400/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
+                  {plan.notes.map((n) => <li key={n}>※ {n}</li>)}
+                </ul>
+              )}
+              <Stats info={info} plan={edited} subtitles={subtitles} />
               <Timeline
                 duration={info.duration}
-                plan={plan}
+                plan={edited}
                 map={map}
+                onTogglePiece={togglePiece}
                 subtitles={subtitles}
                 time={time}
                 onSeek={(t) => playerRef.current?.seekOriginal(t)}
                 transitions={resolvedTransitions}
                 transitionCatalog={transitionCatalog}
-                onToggleTransition={(i) => setTransition((s) => toggleTransitionAt(plan.keep, s, i))}
+                onToggleTransition={(i) => setTransition((s) => toggleTransitionAt(edited.keep, s, i, edited.speeds))}
               />
               <SubtitleList
                 subtitles={subtitles}
@@ -227,7 +279,7 @@ export default function App() {
                 setSettings={setTransition}
                 catalog={transitionCatalog}
                 resolved={resolvedTransitions}
-                keep={plan.keep}
+                keep={edited.keep}
               />
               <ExportPanel
                 project={project}
@@ -235,6 +287,7 @@ export default function App() {
                 subtitles={subtitles}
                 style={style}
                 transition={transition}
+                pieces={pieces}
                 transitionCount={resolvedTransitions.filter(Boolean).length}
                 onError={setError}
                 onDone={() => api.project(pid).then(setProject)}
