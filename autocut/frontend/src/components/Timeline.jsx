@@ -1,13 +1,14 @@
 import { useMemo, useRef, useState } from 'react'
 import { ZoomIn } from 'lucide-react'
 import { fmt, toOriginal } from '../timeline.js'
+import { transitionLabel } from './TransitionPanel.jsx'
 
 function tickStep(duration, zoom) {
   const target = duration / (10 * zoom)
   return [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300].find((s) => s >= target) ?? 600
 }
 
-export default function Timeline({ duration, plan, map, subtitles, time, onSeek }) {
+export default function Timeline({ duration, plan, map, subtitles, time, onSeek, transitions = [], transitionCatalog, onToggleTransition }) {
   const [zoom, setZoom] = useState(1)
   const trackRef = useRef(null)
   const pct = (t) => `${(t / duration) * 100}%`
@@ -45,6 +46,7 @@ export default function Timeline({ duration, plan, map, subtitles, time, onSeek 
         <span className="flex items-center gap-1.5"><i className="size-2.5 rounded-sm bg-keep" /> 남김</span>
         <span className="flex items-center gap-1.5"><i className="cut-hatch size-2.5 rounded-sm" /> 잘림</span>
         <span className="flex items-center gap-1.5"><i className="h-2.5 w-0.5 bg-rose-400" /> 제거된 말</span>
+        <span className="flex items-center gap-1.5"><i className="size-2 rotate-45 bg-amber-300" /> 전환 효과</span>
         <label className="flex items-center gap-2">
           <ZoomIn className="size-3.5" />
           <input type="range" min={1} max={20} step={1} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} className="w-24" />
@@ -72,8 +74,28 @@ export default function Timeline({ duration, plan, map, subtitles, time, onSeek 
             ))}
           </div>
 
+          {/* 전환 효과 레인: 컷마다 ◆ (클릭해서 켜기/끄기) */}
+          <div className="relative mt-1.5 h-4">
+            {plan.keep.slice(0, -1).map(([, e], i) => {
+              const next = plan.keep[i + 1][0]
+              const tr = transitions[i]
+              return (
+                <button
+                  key={i}
+                  onPointerDown={(ev) => ev.stopPropagation()}
+                  onClick={(ev) => { ev.stopPropagation(); onToggleTransition?.(i) }}
+                  className={`absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 transition hover:scale-150
+                    ${tr ? 'bg-amber-300 shadow-[0_0_6px_rgb(252_211_77/0.7)]' : 'border border-ink-600 bg-ink-800 hover:border-amber-300'}
+                    ${tr?.overridden ? 'ring-2 ring-amber-300/40 ring-offset-1 ring-offset-ink-900' : ''}`}
+                  style={{ left: pct((e + next) / 2) }}
+                  title={`컷 ${i + 1} (${(next - e).toFixed(1)}초 잘림)\n${tr ? `전환: ${transitionLabel(transitionCatalog, tr.type)} ${tr.duration.toFixed(1)}초` : '전환 없음'}\n클릭해서 ${tr ? '끄기' : '켜기'}`}
+                />
+              )
+            })}
+          </div>
+
           {/* 영상 레인 */}
-          <div className="relative mt-2 h-10 overflow-hidden rounded-md bg-ink-850">
+          <div className="relative mt-1 h-10 overflow-hidden rounded-md bg-ink-850">
             {plan.keep.map(([s, e], i) => (
               <div
                 key={i}

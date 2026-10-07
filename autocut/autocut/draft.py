@@ -3,11 +3,12 @@ import os
 import platform
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 import pycapcut as cc
 
 from .models import EditPlan, Subtitle
+from .transitions import get_type
 
 SEC = 1_000_000  # pyCapCut 내부 시간 단위: 마이크로초
 
@@ -60,8 +61,14 @@ def _to_frames(seconds: float, fps: float) -> int:
 def build_draft(video_path: str, plan: EditPlan, *, drafts_dir: str, draft_name: str,
                 width: int, height: int, fps: float,
                 style: SubtitleStyle = SubtitleStyle(),
+                transitions: Optional[Sequence[Optional[Tuple[str, float]]]] = None,
                 allow_replace: bool = False) -> str:
-    """편집 계획대로 CapCut 드래프트를 만들고 드래프트 폴더 경로를 반환한다."""
+    """편집 계획대로 CapCut 드래프트를 만들고 드래프트 폴더 경로를 반환한다.
+
+    `transitions[i]` 는 i 번째와 i+1 번째 조각 사이의 (전환 효과 이름, 길이초) 또는 None.
+    """
+    transitions = list(transitions or [])
+    transition_types = [get_type(t[0]) if t else None for t in transitions]  # 이름 오류는 폴더 생성 전에
     # 드래프트 폴더를 만들기 전에 소재부터 읽어서, 실패해도 빈 드래프트가 남지 않게 한다.
     try:
         material = cc.VideoMaterial(os.path.abspath(video_path))
@@ -75,7 +82,7 @@ def build_draft(video_path: str, plan: EditPlan, *, drafts_dir: str, draft_name:
 
     # ---- 영상: 남길 구간을 순서대로 이어붙임 ----
     cursor = 0
-    for s, e in plan.keep:
+    for i, (s, e) in enumerate(plan.keep):
         src_start = _to_frames(s, fps)
         src_end = min(_to_frames(e, fps), material.duration)
         dur = src_end - src_start
@@ -83,6 +90,9 @@ def build_draft(video_path: str, plan: EditPlan, *, drafts_dir: str, draft_name:
             continue
         seg = cc.VideoSegment(material, cc.trange(cursor, dur),
                               source_timerange=cc.trange(src_start, dur))
+        # 전환은 '앞' 조각에 붙인다
+        if i < len(transition_types) and transition_types[i] is not None and i + 1 < len(plan.keep):
+            seg.add_transition(transition_types[i], duration=int(transitions[i][1] * SEC))
         script.add_segment(seg)
         cursor += dur
     total = cursor

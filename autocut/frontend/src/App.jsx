@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from './api.js'
-import { buildMap } from './timeline.js'
+import { buildMap, resolveTransitions, toggleTransitionAt } from './timeline.js'
 import Header from './components/Header.jsx'
 import UploadScreen from './components/UploadScreen.jsx'
 import ScriptPanel from './components/ScriptPanel.jsx'
@@ -10,6 +10,7 @@ import SubtitleList from './components/SubtitleList.jsx'
 import StylePanel from './components/StylePanel.jsx'
 import ExportPanel from './components/ExportPanel.jsx'
 import Stats from './components/Stats.jsx'
+import TransitionPanel from './components/TransitionPanel.jsx'
 
 const DEFAULT_OPTIONS = {
   max_chars: 18,
@@ -18,6 +19,15 @@ const DEFAULT_OPTIONS = {
   keep_threshold: 0.5,
   no_asr: false,
   model: 'small',
+}
+
+const DEFAULT_TRANSITION = {
+  enabled: false,
+  type: '叠化',
+  duration: 0.5,
+  apply: 'long_cuts',
+  min_cut: 2,
+  overrides: {},
 }
 
 const DEFAULT_STYLE = {
@@ -42,6 +52,8 @@ export default function App() {
   const [scriptText, setScriptText] = useState('')
   const [options, setOptions] = useState(DEFAULT_OPTIONS)
   const [style, setStyle] = useState(DEFAULT_STYLE)
+  const [transition, setTransition] = useState(DEFAULT_TRANSITION)
+  const [transitionCatalog, setTransitionCatalog] = useState(null)
   const [subtitles, setSubtitles] = useState([])
   const [time, setTime] = useState(0) // 원본 기준 재생 위치
   const playerRef = useRef(null)
@@ -53,6 +65,7 @@ export default function App() {
   // ---- 초기 로드 ----
   useEffect(() => {
     api.config().then(setConfig).catch((e) => setError(`서버에 연결할 수 없습니다: ${e.message}`))
+    api.transitions().then(setTransitionCatalog).catch(() => {})
   }, [])
 
   const loadedId = useRef(null) // 중복 로드(해시 변경 이벤트 등)로 최신 상태가 덮이지 않게
@@ -68,6 +81,7 @@ export default function App() {
       setScriptText(p.script_text || '')
       if (p.options) setOptions((o) => ({ ...o, ...p.options }))
       setSubtitles(p.plan?.subtitles ?? [])
+      setTransition({ ...DEFAULT_TRANSITION, ...(p.transition ?? {}) })
       setTime(0)
     } catch (e) {
       loadedId.current = null
@@ -97,7 +111,11 @@ export default function App() {
       try {
         const p = await api.project(pid)
         setProject(p)
-        if (p.status.state === 'done') setSubtitles(p.plan?.subtitles ?? [])
+        if (p.status.state === 'done') {
+          setSubtitles(p.plan?.subtitles ?? [])
+          // 컷 위치가 바뀌었으니 컷별 개별 설정은 초기화
+          setTransition((t) => ({ ...t, overrides: {} }))
+        }
         if (p.status.state === 'error') setError(p.status.error)
       } catch (e) {
         setError(e.message)
@@ -116,6 +134,7 @@ export default function App() {
   }
 
   const map = useMemo(() => (plan ? buildMap(plan.keep) : null), [plan])
+  const resolvedTransitions = useMemo(() => (plan ? resolveTransitions(plan.keep, transition) : []), [plan, transition])
   const info = project?.info
   const vertical = info ? info.height > info.width : false
 
@@ -157,6 +176,8 @@ export default function App() {
             map={map}
             subtitles={subtitles}
             style={style}
+            transitions={resolvedTransitions}
+            transitionCatalog={transitionCatalog}
             vertical={vertical}
             onTime={setTime}
           />
@@ -170,6 +191,9 @@ export default function App() {
                 subtitles={subtitles}
                 time={time}
                 onSeek={(t) => playerRef.current?.seekOriginal(t)}
+                transitions={resolvedTransitions}
+                transitionCatalog={transitionCatalog}
+                onToggleTransition={(i) => setTransition((s) => toggleTransitionAt(plan.keep, s, i))}
               />
               <SubtitleList
                 subtitles={subtitles}
@@ -198,11 +222,20 @@ export default function App() {
           {plan && (
             <>
               <StylePanel style={style} setStyle={setStyle} fonts={config?.fonts ?? []} vertical={vertical} />
+              <TransitionPanel
+                settings={transition}
+                setSettings={setTransition}
+                catalog={transitionCatalog}
+                resolved={resolvedTransitions}
+                keep={plan.keep}
+              />
               <ExportPanel
                 project={project}
                 config={config}
                 subtitles={subtitles}
                 style={style}
+                transition={transition}
+                transitionCount={resolvedTransitions.filter(Boolean).length}
                 onError={setError}
                 onDone={() => api.project(pid).then(setProject)}
               />

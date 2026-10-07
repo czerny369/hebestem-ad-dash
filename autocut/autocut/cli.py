@@ -57,6 +57,16 @@ def build_parser() -> argparse.ArgumentParser:
                    help="세로 위치 (-1=맨 아래, 0=가운데, 1=맨 위). 기본: 가로영상 -0.8, 세로영상 -0.55")
     s.add_argument("--font", help="pycapcut.FontType 이름 (기본: CapCut 기본 폰트)")
 
+    t = p.add_argument_group("전환 효과")
+    t.add_argument("--transition", metavar="효과", help="컷 사이 전환 효과 (예: 叠化=디졸브, 闪白=화이트 플래시). "
+                   "--list-transitions 로 목록 확인")
+    t.add_argument("--transition-duration", type=float, default=0.5, help="전환 길이, 초 (기본 0.5)")
+    t.add_argument("--transition-all", action="store_true",
+                   help="모든 컷에 적용 (기본: --transition-min-cut 초 이상 잘린 곳에만)")
+    t.add_argument("--transition-min-cut", type=float, default=2.0,
+                   help="이 이상 잘려 나간 곳에만 전환 적용, 초 (기본 2.0)")
+    t.add_argument("--list-transitions", action="store_true", help="쓸 수 있는 전환 효과 목록 출력 후 종료")
+
     p.add_argument("--preview", metavar="MP4", help="컷 편집 결과를 ffmpeg 로 미리보기 영상으로도 출력")
     p.add_argument("--dry-run", action="store_true", help="드래프트를 만들지 않고 분석 결과만 출력")
     return p
@@ -82,6 +92,17 @@ def render_preview(video: str, keep, out_path: str) -> None:
 
 
 def main(argv=None) -> int:
+    if argv is None:
+        argv = sys.argv[1:]
+    if "--list-transitions" in argv:
+        from .transitions import catalog
+        cat = catalog()
+        print("자주 쓰는 효과:")
+        for item in cat["presets"]:
+            print(f"  {item['id']:<10} {item['label']}")
+        print(f"\n전체 {len(cat['all'])}개 (Pro = CapCut 유료):")
+        print("  " + ", ".join(i["id"] + (" (Pro)" if i["vip"] else "") for i in cat["all"]))
+        return 0
     args = build_parser().parse_args(argv)
     video = os.path.abspath(args.video)
     if not os.path.isfile(video):
@@ -146,9 +167,16 @@ def main(argv=None) -> int:
         border=not args.no_border, border_color=hex_to_rgb(args.border_color),
         transform_y=args.position if args.position is not None else (-0.55 if vertical else -0.8),
         max_line_width=0.9 if vertical else 0.82, font=args.font)
+    transitions = None
+    if args.transition:
+        from .transitions import TransitionSettings, resolve
+        transitions = resolve(plan.keep, TransitionSettings(
+            enabled=True, type=args.transition, duration=args.transition_duration,
+            apply="all" if args.transition_all else "long_cuts", min_cut=args.transition_min_cut))
+        print(f"      전환 효과 {args.transition}: {sum(1 for t in transitions if t)}곳")
     path = build_draft(video, plan, drafts_dir=drafts_dir, draft_name=name,
                        width=info.width, height=info.height, fps=info.fps,
-                       style=style, allow_replace=args.replace)
+                       style=style, transitions=transitions, allow_replace=args.replace)
     print(f"[4/4] CapCut 드래프트 생성 완료: {path}")
     print("      CapCut 을 열면 홈 화면 프로젝트 목록에 나타납니다 (안 보이면 CapCut 재시작).")
     return 0

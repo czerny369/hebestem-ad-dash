@@ -1,6 +1,16 @@
 import { useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { Pause, Play, RotateCcw, Scissors } from 'lucide-react'
 import { fmt, nextKeepStart, toEdited, toOriginal } from '../timeline.js'
+import { transitionLabel } from './TransitionPanel.jsx'
+
+// 미리보기용 대략적인 모양: 밝게 번쩍 / 어둡게 번쩍 / 살짝 어두워짐
+const WHITE = new Set(['闪白', '泛白', 'White_Flash', '闪光灯', '光束', '炫光', '白色烟雾'])
+const BLACK = new Set(['闪黑', '眨眼', '快门', '百叶窗'])
+function flashColor(type) {
+  if (WHITE.has(type)) return 'rgb(255 255 255 / 0.9)'
+  if (BLACK.has(type)) return 'rgb(0 0 0 / 0.95)'
+  return 'rgb(0 0 0 / 0.55)'
+}
 
 /** CapCut 자막 스타일을 대략적으로 흉내 낸 오버레이 */
 export function SubtitleOverlay({ text, style, vertical }) {
@@ -29,12 +39,15 @@ export function SubtitleOverlay({ text, style, vertical }) {
   )
 }
 
-export default function Player({ ref, src, info, plan, map, subtitles, style, vertical, onTime }) {
+export default function Player({ ref, src, info, plan, map, subtitles, style, vertical, onTime, transitions = [], transitionCatalog }) {
   const videoRef = useRef(null)
   const [playing, setPlaying] = useState(false)
   const [edited, setEdited] = useState(true)
   const [t, setT] = useState(0)
   const [unsupported, setUnsupported] = useState(false)
+  const [flash, setFlash] = useState(null) // { type, duration, key }
+  const transitionsRef = useRef(transitions)
+  transitionsRef.current = transitions
   const editedMode = edited && !!plan
 
   useImperativeHandle(ref, () => ({
@@ -61,6 +74,10 @@ export default function Player({ ref, src, info, plan, map, subtitles, style, ve
         if (next === null) {
           v.pause()
         } else if (next - now > 0.02) {
+          // 컷을 건너뛸 때 그 자리에 전환 효과가 있으면 미리보기로 표시
+          const k = plan.keep.findIndex(([s]) => s === next) - 1
+          const tr = k >= 0 ? transitionsRef.current[k] : null
+          if (tr) setFlash({ ...tr, key: performance.now() })
           v.currentTime = next
           now = next
         }
@@ -113,6 +130,22 @@ export default function Player({ ref, src, info, plan, map, subtitles, style, ve
             preload="auto"
           />
           <SubtitleOverlay text={current?.text} style={style} vertical={vertical} />
+          {flash && editedMode && (
+            <>
+              <div
+                key={flash.key}
+                className="pointer-events-none absolute inset-0"
+                style={{ background: flashColor(flash.type), animation: `tr-flash ${Math.max(0.25, flash.duration)}s ease-in-out forwards` }}
+              />
+              <span
+                key={`chip-${flash.key}`}
+                className="pointer-events-none absolute top-3 right-3 rounded-md bg-amber-300 px-2 py-1 text-xs font-semibold text-ink-950 shadow"
+                style={{ animation: 'tr-chip 1.2s ease-out forwards' }}
+              >
+                ◆ {transitionLabel(transitionCatalog, flash.type)}
+              </span>
+            </>
+          )}
           {unsupported && (
             <div className="absolute inset-0 grid place-items-center bg-ink-950/90 p-6 text-center">
               <div>

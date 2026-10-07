@@ -133,3 +133,39 @@ def test_cli_end_to_end(tmp_path):
     texts = [json.loads(t["content"])["text"] for t in content["materials"]["texts"]]
     assert texts == [s.text for s in SCRIPT]
     assert os.path.exists(tmp_path / "t.srt")
+
+
+def test_transition_resolve():
+    from autocut.transitions import TransitionSettings, resolve
+    keep = [(0.0, 2.0), (2.5, 4.0), (8.0, 8.3), (8.5, 12.0)]
+    # 기본: 2초 이상 잘린 곳(4.0→8.0)만, 길이는 짧은 조각(0.3초)의 절반으로 제한
+    r = resolve(keep, TransitionSettings(enabled=True, type="闪白", duration=0.5))
+    assert r[0] is None and r[2] is None
+    assert r[1] == ("闪白", pytest.approx(0.15))
+    r = resolve(keep, TransitionSettings(enabled=True, apply="all", duration=0.5))
+    assert [x[0] if x else None for x in r] == ["叠化", "叠化", "叠化"]
+    # 개별 설정: 끄기/다른 효과 (전체 사용 안 함이어도 개별 지정은 적용)
+    r = resolve(keep, TransitionSettings(enabled=False, overrides={0: "推近", 1: "none"}))
+    assert r[0][0] == "推近" and r[1] is None and r[2] is None
+
+
+def test_draft_with_transitions(tmp_path):
+    if not shutil.which("ffmpeg"):
+        pytest.skip("ffmpeg 필요")
+    from autocut.draft import build_draft
+    from autocut.models import EditPlan
+    video = tmp_path / "v.mp4"
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=320x180:rate=30:duration=10",
+                    "-c:v", "libx264", "-preset", "ultrafast", str(video)], check=True)
+    plan = EditPlan(keep=[(0, 3), (5, 8)], subtitles=[Subtitle("안녕", 0.5, 2.0)])
+    drafts = tmp_path / "d"
+    drafts.mkdir()
+    build_draft(str(video), plan, drafts_dir=str(drafts), draft_name="t", width=320, height=180, fps=30,
+                transitions=[("叠化", 0.5)])
+    content = json.loads((drafts / "t" / "draft_content.json").read_text(encoding="utf-8"))
+    tr = content["materials"]["transitions"]
+    assert len(tr) == 1 and tr[0]["name"] == "叠化" and tr[0]["duration"] == 500000
+    with pytest.raises(ValueError):
+        build_draft(str(video), plan, drafts_dir=str(drafts), draft_name="t2", width=320, height=180, fps=30,
+                    transitions=[("없는효과", 0.5)])
+    assert not (drafts / "t2").exists()

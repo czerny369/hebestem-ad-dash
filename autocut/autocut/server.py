@@ -13,7 +13,7 @@ import traceback
 import uuid
 from dataclasses import asdict
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import pycapcut as cc
 from fastapi import FastAPI, File, HTTPException, UploadFile
@@ -27,6 +27,7 @@ from .draft import SubtitleStyle, build_draft, default_drafts_dir, hex_to_rgb, s
 from .models import EditPlan, Subtitle
 from .pipeline import AnalyzeOptions, analyze
 from .script_parser import parse_script_text
+from .transitions import TransitionSettings, catalog as transition_catalog, resolve as resolve_transitions
 
 HOME = Path(os.environ.get("AUTOCUT_HOME", Path.home() / "AutoCut")).expanduser()
 PROJECTS = HOME / "projects"
@@ -71,6 +72,11 @@ def _public(pid: str, data: dict) -> dict:
 # --------------------------------------------------------------------------- #
 # API
 # --------------------------------------------------------------------------- #
+@app.get("/api/transitions")
+def transitions_catalog():
+    return transition_catalog()
+
+
 @app.get("/api/config")
 def config():
     return {
@@ -205,12 +211,22 @@ class StyleIn(BaseModel):
     font: Optional[str] = None
 
 
+class TransitionIn(BaseModel):
+    enabled: bool = False
+    type: str = "叠化"
+    duration: float = Field(0.5, ge=0.1, le=3)
+    apply: str = Field("long_cuts", pattern="^(all|long_cuts)$")
+    min_cut: float = Field(2.0, ge=0, le=60)
+    overrides: Dict[int, str] = {}
+
+
 class DraftRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     drafts_dir: str
     replace: bool = False
     subtitles: List[SubtitleIn]
     style: StyleIn = StyleIn()
+    transition: TransitionIn = TransitionIn()
 
 
 def _plan_with(data: dict, subtitles: List[SubtitleIn]) -> EditPlan:
@@ -240,10 +256,15 @@ def make_draft(pid: str, req: DraftRequest):
         border_color=hex_to_rgb(st.border_color),
         transform_y=st.position if st.position is not None else (-0.55 if vertical else -0.8),
         max_line_width=0.9 if vertical else 0.82, font=st.font or None)
+    tr = req.transition
+    for name in [tr.type, *tr.overrides.values()]:
+        if name != "none" and name not in cc.TransitionType.__members__:
+            raise HTTPException(400, f"알 수 없는 전환 효과: {name}")
+    transitions = resolve_transitions(plan.keep, TransitionSettings(**tr.model_dump()))
     try:
         path = build_draft(data["video_path"], plan, drafts_dir=req.drafts_dir, draft_name=req.name,
                            width=info.width, height=info.height, fps=info.fps,
-                           style=style, allow_replace=req.replace)
+                           style=style, transitions=transitions, allow_replace=req.replace)
     except FileExistsError:
         raise HTTPException(409, f"'{req.name}' 드래프트가 이미 있습니다. 덮어쓰기를 켜거나 이름을 바꾸세요")
     except ValueError as e:
@@ -252,7 +273,8 @@ def make_draft(pid: str, req: DraftRequest):
         traceback.print_exc()
         raise HTTPException(500, f"드래프트 생성 실패: {e}")
 
-    data["draft"] = {"name": req.name, "path": path}
+    data["draft"] = {"name": req.name, "path": path, "transitions": sum(1 for t in transitions if t)}
+    data["transition"] = tr.model_dump()
     data["plan"]["subtitles"] = [asdict(s) for s in plan.subtitles]
     _save(pid, data)
     return {"path": path}

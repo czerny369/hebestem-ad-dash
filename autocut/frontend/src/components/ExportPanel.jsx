@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { CheckCircle2, Download, Loader2, Send } from 'lucide-react'
 import { api } from '../api.js'
 
-export default function ExportPanel({ project, config, subtitles, style, onError, onDone }) {
+export default function ExportPanel({ project, config, subtitles, style, transition, transitionCount, onError, onDone }) {
   const stem = project.video_name.replace(/\.[^.]+$/, '')
   const [name, setName] = useState(project.draft?.name ?? `${stem}_autocut`)
   const [dir, setDir] = useState('')
@@ -21,7 +21,7 @@ export default function ExportPanel({ project, config, subtitles, style, onError
     setResult(null)
     onError(null)
     try {
-      const res = await api.draft(project.id, { name: name.trim(), drafts_dir: dir.trim(), replace, subtitles, style: { ...style, font: style.font || null } })
+      const res = await api.draft(project.id, { name: name.trim(), drafts_dir: dir.trim(), replace, subtitles, style: { ...style, font: style.font || null }, transition })
       try { localStorage.setItem('autocut.draftsDir', dir.trim()) } catch { /* noop */ }
       setResult(res.path)
       setReplace(true)
@@ -78,6 +78,7 @@ export default function ExportPanel({ project, config, subtitles, style, onError
       {result && (
         <div className="mt-3 rounded-xl border border-keep/40 bg-keep/10 p-3 text-sm">
           <p className="flex items-center gap-2 font-medium text-emerald-300"><CheckCircle2 className="size-4" /> 드래프트를 만들었어요</p>
+          {transitionCount > 0 && <p className="mt-1 text-xs text-ink-300">전환 효과 {transitionCount}곳 포함</p>}
           <p className="mt-1 text-xs text-ink-300">CapCut 홈 화면에 <b className="text-ink-100">{name}</b> 프로젝트가 보여요. 안 보이면 CapCut을 다시 켜 주세요.</p>
           <p className="mt-2 break-all font-mono text-[11px] text-ink-400">{result}</p>
         </div>

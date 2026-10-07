@@ -67,3 +67,15 @@
 input[type="range"] {
   @apply h-1.5 w-full cursor-pointer appearance-none rounded-full bg-ink-700 accent-accent;
 }
+
+/* 전환 효과 미리보기 (실제 효과는 CapCut 에서 확인) */
+@keyframes tr-flash {
+  0% { opacity: 0; }
+  45% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes tr-chip {
+  0% { opacity: 0; transform: translateY(4px); }
+  15%, 75% { opacity: 1; transform: none; }
+  100% { opacity: 0; }
+}

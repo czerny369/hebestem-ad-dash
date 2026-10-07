@@ -17,6 +17,7 @@ async function request(path, options = {}) {
 
 export const api = {
   config: () => request('/api/config'),
+  transitions: () => request('/api/transitions'),
   projects: () => request('/api/projects'),
   project: (id) => request(`/api/projects/${id}`),
   deleteProject: (id) => request(`/api/projects/${id}`, { method: 'DELETE' }),
