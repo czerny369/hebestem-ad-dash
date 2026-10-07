@@ -1,0 +1,16 @@
+[project]
+name = "autocut"
+version = "0.1.0"
+description = "영상 + 자막 스크립트 → 버벅임/긴 공백 자동 컷 + 자동 자막 → CapCut 드래프트"
+requires-python = ">=3.9"
+dependencies = ["pycapcut>=0.0.3", "faster-whisper>=1.0", "numpy", "fastapi>=0.110", "uvicorn>=0.29", "python-multipart", "sentence-transformers>=3.0"]
+
+[project.scripts]
+autocut = "autocut.cli:main"
+autocut-web = "autocut.server:main"
+
+[tool.setuptools]
+packages = ["autocut"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

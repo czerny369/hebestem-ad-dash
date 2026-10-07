@@ -1,0 +1,7 @@
+pycapcut>=0.0.3
+faster-whisper>=1.0
+numpy
+fastapi>=0.110
+uvicorn>=0.29
+python-multipart
+sentence-transformers>=3.0   # 음성 없는 영상: 화면과 [동작 설명] 비교 (다국어 CLIP)
